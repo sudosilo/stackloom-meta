@@ -221,6 +221,12 @@
   #bubStatus, #cardStatus { height: 38px; min-height: 38px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 2px 14px; line-height: 1.3; }
   #bubCanvas { display: block; border-radius: 6px; box-shadow: 0 0 0 1px var(--edge); touch-action: none; }
 
+  /* Runner engine screen */
+  .runr { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--page); user-select: none; -webkit-user-select: none; }
+  .runr[hidden] { display: none; }
+  #runStatus { height: 38px; min-height: 38px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 2px 14px; line-height: 1.3; }
+  #runCanvas { display: block; border-radius: 6px; box-shadow: 0 0 0 1px var(--edge); touch-action: none; }
+
   /* Card engine screen */
   .cards { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--page); user-select: none; -webkit-user-select: none; }
   .cards[hidden] { display: none; }
@@ -383,6 +389,33 @@
   <div class="dtools">
     <button id="bubSwap" class="btn">Swap</button>
     <button id="bubFire" class="btn primary">Fire</button>
+  </div>
+</div>
+
+<div id="runr" class="runr" hidden>
+  <header class="play-top">
+    <div class="play-title">
+      <div id="runName" class="row-name"></div>
+      <div id="runFor" class="quiet"></div>
+    </div>
+    <div class="stat"><span class="label">Crowd</span><span id="runCount" class="value">1</span></div>
+    <div class="stat"><span class="label">Level</span><span id="runLevel" class="value">1</span></div>
+    <button id="runClose" class="btn">Done</button>
+  </header>
+  <div id="runStatus" class="doku-status"></div>
+  <main id="runStage" class="stage">
+    <div id="runWrap" class="board-wrap">
+      <canvas id="runCanvas"></canvas>
+      <div id="runOverlay" class="overlay">
+        <h1 id="runOverlayTitle"></h1>
+        <p id="runOverlayText"></p>
+        <button id="runOverlayButton" class="btn primary">Start</button>
+      </div>
+    </div>
+  </main>
+  <div class="dtools">
+    <button id="runLeft" class="btn primary">Left lane</button>
+    <button id="runRight" class="btn primary">Right lane</button>
   </div>
 </div>
 
@@ -699,6 +732,36 @@ const CARD_GAMES = {
 const PREMIUM = { work: 16, payBoost: 1.8 };
 
 // ------------------------------------------------------------------
+// FIFTH PRODUCT LINE: RUNNERS
+// The math gate runner from the phone ads. Pick a lane, run through a
+// gate that adds or multiplies your crowd, smash the enemy squads, and
+// outnumber the boss at the end. Every product is a skin file.
+// ------------------------------------------------------------------
+const RUNNER_THEMES = {
+  army: { label: "Gate Commander", work: 18, hero: "💂", enemy: "👹", boss: "🏰", sky: "#eaf3ff", ground: "#d9e8c8", road: "#c9d3df", names: ["soldier", "goblin", "fortress"] },
+  hacker: { label: "Botnet Rush", work: 24, hero: "🤖", enemy: "🛡️", boss: "🏦", sky: "#eef6ff", ground: "#dbe7f5", road: "#c3d2e4", names: ["bot", "firewall", "mainframe"] },
+  zombie: { label: "Horde Math", work: 22, hero: "🧟", enemy: "🧑‍🌾", boss: "🏚️", sky: "#f2f5ec", ground: "#d6e3c3", road: "#cfcabd", names: ["zombie", "farmer", "farmhouse"] },
+  duck: { label: "Duck Duck Multiply", work: 20, hero: "🦆", enemy: "🐊", boss: "🦢", sky: "#eefaff", ground: "#cfeedd", road: "#bfe3f0", names: ["duck", "gator", "swan king"] },
+  dog: { label: "Pack Run", work: 22, hero: "🐕", enemy: "🐈", boss: "🧹", sky: "#fff8ee", ground: "#e9e2c8", road: "#e0d4c0", names: ["dog", "cat", "mail carrier broom"] },
+  ninja: { label: "Clan Count", work: 24, hero: "🥷", enemy: "👺", boss: "🏯", sky: "#f4f2fa", ground: "#e0e6d2", road: "#d3cfdc", names: ["ninja", "oni", "castle"] },
+  space: { label: "Fleet Formula", work: 24, hero: "🚀", enemy: "👾", boss: "🛸", sky: "#f1f1ff", ground: "#e3e1f5", road: "#cfcce8", names: ["rocket", "invader", "mothership"] },
+  penguin: { label: "Waddle Count", work: 20, hero: "🐧", enemy: "🦭", boss: "🐻‍❄️", sky: "#f2fbff", ground: "#e4f3fa", road: "#d5e8f2", names: ["penguin", "seal", "polar bear"] }
+};
+Object.values(RUNNER_THEMES).forEach(t => {
+  t.glyphs = [t.hero, t.enemy, t.boss];
+  t.colors = ["#2463b0", "#d0584f", t.road, t.ground, t.sky];
+});
+
+const RUNNER_MATH = {
+  friendly: { label: "friendly math", ops: ["+", "x"], work: 0 },
+  tricky: { label: "tricky math", ops: ["+", "x", "-", "/"], work: 4 }
+};
+const RUNNER_LENGTHS = {
+  short: { label: "short track", gates: 8, work: 0 },
+  long: { label: "long track", gates: 13, work: 4 }
+};
+
+// ------------------------------------------------------------------
 // Company rules
 // ------------------------------------------------------------------
 const DAY_SECONDS = 45;
@@ -734,6 +797,8 @@ const SENIORS = [
     text: "Knows logic puzzles cold. Customers start ordering symbol sudoku games like Hackerdoku and Meowdoku, and doku builds go faster." },
   { key: "physics", title: "Physics programmer", name: "Teodor", cost: 4500, salary: 300, office: 1, needs: "puzzle", line: "bubble", lineName: "Bubble line",
     text: "Makes things bounce right. Customers start ordering bubble shooters like Packet Popper and Pup Pop, and bubble builds go faster." },
+  { key: "ads", title: "Ad producer", name: "Brisco", cost: 6000, salary: 360, office: 1, needs: "physics", line: "runner", lineName: "Runner line",
+    text: "Spent a career making phone ads for games that look nothing like the ads. Customers start ordering math gate runners, the game from the ads, and runner builds go faster." },
   { key: "systems", title: "Systems designer", name: "Halvard", cost: 7500, salary: 420, office: 2, needs: "physics", line: "cards", lineName: "Card line",
     text: "Reads rulebooks for fun. Customers start ordering themed card decks for solitaire and video poker, and deck builds go faster." },
   { key: "art", title: "Art director", name: "Celeste", cost: 12000, salary: 600, office: 2, needs: "systems", line: "art", lineName: "premium line",
@@ -832,16 +897,19 @@ function terminalPrice() { return 350 + 150 * (company.terminals.length - 1); }
 function isDoku(order) { return order.line === "doku"; }
 function isBubble(order) { return order.line === "bubble"; }
 function isCards(order) { return order.line === "cards"; }
+function isRunner(order) { return order.line === "runner"; }
 function lookFor(order) {
   if (isDoku(order)) return DOKU_THEMES[order.theme];
   if (isBubble(order)) return BUBBLE_THEMES[order.theme];
   if (isCards(order)) return CARD_THEMES[order.theme];
+  if (isRunner(order)) return RUNNER_THEMES[order.theme];
   return THEMES[order.theme];
 }
 function bugSlots(order) {
   if (isDoku(order)) return 9;
   if (isBubble(order)) return BUBBLE_PALETTES[order.palette].count;
   if (isCards(order)) return 4;
+  if (isRunner(order)) return 3;
   return PIECE_SETS[order.pieceSet].shapes.length;
 }
 
@@ -854,6 +922,7 @@ function orderSpec(order) {
     return parts.join(", ") + prem;
   }
   if (isCards(order)) return lookFor(order).label + " for " + CARD_GAMES[order.game].label + prem;
+  if (isRunner(order)) return lookFor(order).label + " gate runner, " + RUNNER_MATH[order.math].label + ", " + RUNNER_LENGTHS[order.length].label + prem;
   const parts = [lookFor(order).label + " theme"];
   if (order.premium) parts.push("premium art");
   if (order.pieceSet !== "standard") parts.push(PIECE_SETS[order.pieceSet].label);
@@ -910,6 +979,28 @@ function buildCardFile(customer, themeKey, gameKey, premium) {
   };
 }
 
+function buildRunnerFile(customer, themeKey, mathKey, lengthKey, premium) {
+  const look = RUNNER_THEMES[themeKey];
+  return {
+    product: "runner",
+    themeName: look.label,
+    customer: customer,
+    premium: !!premium,
+    ops: RUNNER_MATH[mathKey].ops.slice(),
+    gates: RUNNER_LENGTHS[lengthKey].gates,
+    sky: look.sky,
+    ground: look.ground,
+    road: look.road,
+    goodGate: "#2463b0",
+    badGate: "#d0584f",
+    units: [
+      { role: "runner", name: look.names[0], glyph: look.hero },
+      { role: "enemy", name: look.names[1], glyph: look.enemy },
+      { role: "boss", name: look.names[2], glyph: look.boss }
+    ]
+  };
+}
+
 function buildThemeFile(order) {
   if (isDoku(order)) {
     const file = buildDokuFile(order.customer, order.theme, order.level);
@@ -918,6 +1009,7 @@ function buildThemeFile(order) {
   }
   if (isBubble(order)) return buildBubbleFile(order.customer, order.theme, order.palette, order.pace, order.premium);
   if (isCards(order)) return buildCardFile(order.customer, order.theme, order.game, order.premium);
+  if (isRunner(order)) return buildRunnerFile(order.customer, order.theme, order.math, order.length, order.premium);
   const look = lookFor(order);
   return {
     themeName: look.label,
@@ -950,6 +1042,10 @@ function withBug(file, bug) {
   if (copy.product === "bubble") {
     copy.bubbles[bug.pieceIndex].glyph = "?";
     copy.bubbles[bug.pieceIndex].color = "#c3c8ca";
+    return copy;
+  }
+  if (copy.product === "runner") {
+    copy.units[bug.pieceIndex].glyph = "?";
     return copy;
   }
   if (copy.product === "cards") {
@@ -1006,6 +1102,15 @@ const HOUSE_POKER = {
   file: buildCardFile("The studio", "classic", "poker", true)
 };
 
+const HOUSE_RUNNER = {
+  id: "houserunner",
+  customer: "the studio",
+  spec: "Botnet Rush gate runner with tricky math, the game from the ads that every studio keeps on hand",
+  day: 0,
+  bug: false,
+  file: buildRunnerFile("The studio", "hacker", "tricky", "short", false)
+};
+
 const HOUSE_GAME = {
   id: "house",
   customer: "the studio",
@@ -1024,11 +1129,13 @@ function makeOffer() {
   if (lineOpen("doku")) lines.push("doku");
   if (lineOpen("bubble")) lines.push("bubble");
   if (lineOpen("cards")) lines.push("cards");
+  if (lineOpen("runner")) lines.push("runner");
   const line = pick(lines);
   let order;
   if (line === "doku") order = makeDokuOffer();
   else if (line === "bubble") order = makeBubbleOffer();
   else if (line === "cards") order = makeCardOffer();
+  else if (line === "runner") order = makeRunnerOffer();
   else order = makeBlockOffer();
   if (lineOpen("art") && Math.random() < 0.3) {
     order.premium = true;
@@ -1072,6 +1179,21 @@ function makeCardOffer() {
     expiresAt: company.time + 40, deadline: 0, readyAt: 0
   };
   order.work = CARD_THEMES[order.theme].work + CARD_GAMES[order.game].work;
+  return priceOrder(order, 12);
+}
+
+function makeRunnerOffer() {
+  const order = {
+    id: company.nextId++,
+    line: "runner",
+    customer: pick(CUSTOMERS),
+    theme: pick(Object.keys(RUNNER_THEMES)),
+    math: pick(["friendly", "tricky", "tricky"]),
+    length: pick(["short", "short", "long"]),
+    status: "offer", progress: 0, terminal: -1, builtBy: -1, bug: null, tested: false,
+    expiresAt: company.time + 40, deadline: 0, readyAt: 0
+  };
+  order.work = RUNNER_THEMES[order.theme].work + RUNNER_MATH[order.math].work + RUNNER_LENGTHS[order.length].work;
   return priceOrder(order, 12);
 }
 
@@ -1314,7 +1436,7 @@ function strip(colors) {
 }
 
 function motifLine(order) {
-  const motifs = (isDoku(order) || isBubble(order) || isCards(order) ? lookFor(order).glyphs : THEMES[order.theme].motifs).filter(Boolean);
+  const motifs = (isDoku(order) || isBubble(order) || isCards(order) || isRunner(order) ? lookFor(order).glyphs : THEMES[order.theme].motifs).filter(Boolean);
   return motifs.length ? `<div class="motifs">${motifs.join(" ")}</div>` : "";
 }
 
@@ -1550,9 +1672,9 @@ function renderOffice() {
 }
 
 function renderGames() {
-  let html = `<p class="note">Every block game runs on the block engine, every doku on the doku engine, every bubble shooter on the bubble engine, and every deck on the deck engine. The only difference between products on the same engine is the theme file. Premium products are the same file with one flag flipped and a bigger invoice. Tap View file to see one.</p>`;
+  let html = `<p class="note">Every block game runs on the block engine, every doku on the doku engine, every bubble shooter on the bubble engine, every deck on the deck engine, and every gate runner on the runner engine. The only difference between products on the same engine is the theme file. Premium products are the same file with one flag flipped and a bigger invoice. Tap View file to see one.</p>`;
   html += renderHackCard();
-  [HOUSE_GAME, HOUSE_DOKU, HOUSE_BUBBLE, HOUSE_DECK, HOUSE_POKER, ...company.catalog].forEach(game => {
+  [HOUSE_GAME, HOUSE_DOKU, HOUSE_BUBBLE, HOUSE_DECK, HOUSE_POKER, HOUSE_RUNNER, ...company.catalog].forEach(game => {
     html += `
       <article class="order">
         ${strip(fileColors(game.file))}
@@ -1629,12 +1751,14 @@ function gameById(id) {
   if (id === "housebubble") return HOUSE_BUBBLE;
   if (id === "housedeck") return HOUSE_DECK;
   if (id === "housepoker") return HOUSE_POKER;
+  if (id === "houserunner") return HOUSE_RUNNER;
   return company.catalog.find(game => game.id === id);
 }
 
 function fileColors(file) {
   if (file.product === "doku") return file.symbols.map(symbol => symbol.color);
   if (file.product === "bubble") return file.bubbles.map(b => b.color);
+  if (file.product === "runner") return [file.goodGate, file.badGate, file.road, file.ground, file.sky];
   if (file.product === "cards") return file.suits.map(suit => suit.color).concat(["#2463b0"]);
   return file.pieces.slice(0, 7).map(piece => piece.color);
 }
@@ -2148,6 +2272,7 @@ function openPlay(file, context) {
   if (file.product === "doku") openDoku(file, context);
   else if (file.product === "bubble") openBubble(file, context);
   else if (file.product === "cards") openCards(file, context);
+  else if (file.product === "runner") openRunner(file, context);
   else openBlocks(file, context);
 }
 
@@ -2201,6 +2326,9 @@ function finishPlayTest(orderId) {
     } else if (isBubble(order)) {
       const bubbleName = BUBBLE_THEMES[order.theme].names[order.bug.pieceIndex];
       notify("Play test found a bug. The " + bubbleName + " bubble had gone grey with a question mark on it. Fixed before shipping.", true);
+    } else if (isRunner(order)) {
+      const unitName = RUNNER_THEMES[order.theme].names[order.bug.pieceIndex];
+      notify("Play test found a bug. The " + unitName + " showed up as a question mark on the track. Fixed before shipping.", true);
     } else if (isCards(order)) {
       const suitName = CARD_THEMES[order.theme].suits[order.bug.pieceIndex].name;
       notify("Play test found a bug. The " + suitName + " suit printed as question marks on every card. Fixed before shipping.", true);
@@ -3122,6 +3250,367 @@ document.getElementById("bubClose").addEventListener("click", closeBubble);
 window.addEventListener("resize", bubResize);
 
 // ------------------------------------------------------------------
+// THE RUNNER ENGINE
+// Reads a runner skin file and becomes that gate runner. Drag left and
+// right or use the lane buttons. Every pair of gates changes the crowd.
+// ------------------------------------------------------------------
+const RUN_SPEED = 7;
+const RUN_GAP = 11;
+const RUN_DEPTH = 7;
+
+const runRoot = document.getElementById("runr");
+const runStage = document.getElementById("runStage");
+const runWrap = document.getElementById("runWrap");
+const runCanvas = document.getElementById("runCanvas");
+const runCtx = runCanvas.getContext("2d");
+const runOverlay = document.getElementById("runOverlay");
+const runStatusEl = document.getElementById("runStatus");
+
+let runOpen = false;
+let rs = null;
+
+function runStatus(text, kind) {
+  runStatusEl.textContent = text || "";
+  runStatusEl.className = "doku-status" + (kind ? " " + kind : "");
+}
+function runShowOverlay(title, text, label) {
+  document.getElementById("runOverlayTitle").textContent = title;
+  document.getElementById("runOverlayText").textContent = text;
+  document.getElementById("runOverlayButton").textContent = label;
+  runOverlay.hidden = false;
+}
+function shortNum(n) {
+  if (n >= 1e9) return (n / 1e9).toFixed(1).replace(/\.0$/, "") + "B";
+  if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1e4) return (n / 1e3).toFixed(1).replace(/\.0$/, "") + "K";
+  return String(n);
+}
+function runApply(count, gate) {
+  if (gate.op === "+") return count + gate.val;
+  if (gate.op === "x") return count * gate.val;
+  if (gate.op === "-") return Math.max(0, count - gate.val);
+  return Math.floor(count / gate.val);
+}
+function runLabel(gate) { return (gate.op === "/" ? "÷" : gate.op === "x" ? "×" : gate.op) + gate.val; }
+function runGood(gate) { return gate.op === "+" || gate.op === "x"; }
+
+function runMakeGate(level) {
+  const op = pick(rs.file.ops);
+  const grow = 1 + (level - 1) * 0.6;
+  let val;
+  if (op === "+") val = Math.max(5, Math.round((5 + Math.random() * 35) * grow / 5) * 5);
+  else if (op === "x") val = 2 + Math.floor(Math.random() * 3);
+  else if (op === "-") val = Math.max(5, Math.round((5 + Math.random() * 30) * grow / 5) * 5);
+  else val = 2 + Math.floor(Math.random() * 2);
+  return { op, val };
+}
+
+function runBuildTrack() {
+  const objs = [];
+  let best = 1;
+  let z = RUN_GAP;
+  for (let i = 0; i < rs.file.gates; i++) {
+    let left = runMakeGate(rs.level), right = runMakeGate(rs.level);
+    let guard = 0;
+    while (left.op === right.op && left.val === right.val && guard++ < 10) right = runMakeGate(rs.level);
+    // Every pair offers at least one gate that grows the crowd.
+    if (!runGood(left) && !runGood(right)) { if (Math.random() < 0.5) left = { op: "+", val: 10 * rs.level }; else right = { op: "x", val: 2 }; }
+    objs.push({ kind: "gate", z, left, right, used: false });
+    best = Math.max(runApply(best, left), runApply(best, right));
+    z += RUN_GAP;
+    if (i > 1 && i % 3 === 2) {
+      const n = Math.max(3, Math.round(best * (0.12 + Math.random() * 0.18)));
+      objs.push({ kind: "enemy", z: z - RUN_GAP / 2, count: n, used: false });
+      best = Math.max(0, best - n);
+    }
+  }
+  const boss = Math.max(8, Math.round(best * (0.5 + Math.min(rs.level, 4) * 0.08)));
+  objs.push({ kind: "boss", z: z + RUN_GAP * 0.4, count: boss, used: false });
+  rs.objs = objs;
+  rs.trackEnd = z + RUN_GAP * 0.4;
+}
+
+function runStart(nextLevel) {
+  if (!nextLevel) { rs.level = 1; rs.score = 0; }
+  rs.count = 1;
+  rs.dist = 0;
+  rs.px = 0; rs.target = 0;
+  rs.pops = [];
+  runBuildTrack();
+  rs.state = "playing";
+  runOverlay.hidden = true;
+  runStatus(nextLevel ? "Level " + rs.level + ". Bigger numbers, bigger boss." : "Drag or tap the lane buttons. Pick the gate that grows the crowd most.");
+  runStats();
+}
+
+function runStats() {
+  document.getElementById("runCount").textContent = shortNum(rs.count);
+  document.getElementById("runLevel").textContent = rs.level;
+}
+
+function runPop(text, good) { rs.pops.push({ text, good, t: 0 }); }
+
+function runUpdate(dt) {
+  rs.px += (rs.target - rs.px) * Math.min(1, dt * 10);
+  if (rs.state !== "playing") { rs.pops.forEach(p => { p.t += dt; }); rs.pops = rs.pops.filter(p => p.t < 1); return; }
+  rs.dist += RUN_SPEED * (1 + (rs.level - 1) * 0.08) * dt;
+  for (const o of rs.objs) {
+    if (o.used || o.z - rs.dist > 0) continue;
+    o.used = true;
+    if (o.kind === "gate") {
+      const g = rs.px < 0 ? o.left : o.right;
+      const before = rs.count;
+      rs.count = runApply(rs.count, g);
+      runPop(runLabel(g), rs.count >= before);
+      runStatus(runLabel(g) + " took the crowd from " + shortNum(before) + " to " + shortNum(rs.count) + ".", rs.count >= before ? "good" : "warn");
+      if (rs.count <= 0) { runLose("The whole crowd got divided out of existence."); return; }
+    } else if (o.kind === "enemy") {
+      const before = rs.count;
+      rs.count = Math.max(0, rs.count - o.count);
+      runPop("-" + shortNum(o.count), false);
+      runStatus("Smashed a squad of " + shortNum(o.count) + ". Crowd down to " + shortNum(rs.count) + ".", "warn");
+      if (rs.count <= 0) { runLose("The squad of " + shortNum(o.count) + " wiped out all " + shortNum(before) + "."); return; }
+    } else if (o.kind === "boss") {
+      if (rs.count > o.count) {
+        rs.score += rs.count;
+        rs.state = "won";
+        runShowOverlay("You outnumbered it", shortNum(rs.count) + " beat the boss guard of " + shortNum(o.count) + ". Total score " + shortNum(rs.score) + ".", "Next level");
+      } else {
+        runLose("The boss had " + shortNum(o.count) + " and you showed up with " + shortNum(rs.count) + ".");
+      }
+      runStats();
+      return;
+    }
+    runStats();
+  }
+  rs.pops.forEach(p => { p.t += dt; });
+  rs.pops = rs.pops.filter(p => p.t < 1);
+}
+
+function runLose(why) {
+  rs.state = "over";
+  runShowOverlay("Run over", why + " Score " + shortNum(rs.score) + ".", "Run again");
+  runStats();
+}
+
+// Perspective: z is distance ahead of the crowd. t is the size factor.
+function runProj(z) {
+  const t = 1 / (1 + Math.max(-0.9, z) / RUN_DEPTH);
+  const horizon = rs.H * 0.1, player = rs.H * 0.82;
+  return { t, y: horizon + (player - horizon) * t, half: rs.W * 0.04 + (rs.W * 0.4 - rs.W * 0.04) * t };
+}
+
+function runDrawFigures(cx, cy, size, glyph, count, alpha) {
+  const ctx = runCtx;
+  const shown = Math.min(count, 36);
+  ctx.globalAlpha = alpha == null ? 1 : alpha;
+  ctx.font = Math.floor(size) + "px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  if (rs.file.premium) { ctx.shadowColor = "rgba(28, 40, 51, 0.35)"; ctx.shadowBlur = size * 0.25; ctx.shadowOffsetY = size * 0.08; }
+  for (let i = shown - 1; i >= 0; i--) {
+    const a = i * 2.4, r = Math.sqrt(i) * size * 0.42;
+    ctx.fillText(glyph, cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.5);
+  }
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; ctx.shadowColor = "transparent";
+  ctx.globalAlpha = 1;
+}
+
+function runTag(x, y, text, color, size) {
+  const ctx = runCtx;
+  ctx.font = "700 " + Math.floor(size) + "px system-ui, sans-serif";
+  const w = ctx.measureText(text).width + size * 0.9;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y - size * 0.75, w, size * 1.5, size * 0.4);
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y + 1);
+}
+
+function runDraw() {
+  if (!rs) return;
+  const ctx = runCtx, W = rs.W, H = rs.H, f = rs.file;
+  const top = runProj(400), bottom = runProj(-0.85);
+  if (f.premium) {
+    const sky = ctx.createLinearGradient(0, 0, 0, top.y);
+    sky.addColorStop(0, shade(f.sky, -0.12)); sky.addColorStop(1, f.sky);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, top.y + 1);
+    const g = ctx.createLinearGradient(0, top.y, 0, H);
+    g.addColorStop(0, shade(f.ground, 0.2)); g.addColorStop(1, shade(f.ground, -0.12));
+    ctx.fillStyle = g; ctx.fillRect(0, top.y, W, H - top.y);
+  } else {
+    ctx.fillStyle = f.sky; ctx.fillRect(0, 0, W, top.y + 1);
+    ctx.fillStyle = f.ground; ctx.fillRect(0, top.y, W, H - top.y);
+  }
+  // Road
+  ctx.fillStyle = f.road;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - top.half, top.y); ctx.lineTo(W / 2 + top.half, top.y);
+  ctx.lineTo(W / 2 + bottom.half, H); ctx.lineTo(W / 2 - bottom.half, H); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = "#2463b0"; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(W / 2 - top.half, top.y); ctx.lineTo(W / 2 - bottom.half, H);
+  ctx.moveTo(W / 2 + top.half, top.y); ctx.lineTo(W / 2 + bottom.half, H);
+  ctx.stroke();
+  // Moving center dashes
+  ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+  const phase = rs.dist % 3;
+  for (let z = -phase; z < 120; z += 3) {
+    const a = runProj(z), b = runProj(z + 1.4);
+    if (a.y < top.y) break;
+    const wa = Math.max(1, a.t * 4), wb = Math.max(1, b.t * 4);
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - wa, a.y); ctx.lineTo(W / 2 + wa, a.y); ctx.lineTo(W / 2 + wb, b.y); ctx.lineTo(W / 2 - wb, b.y);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // Objects far to near
+  const vis = rs.objs.filter(o => !o.used && o.z - rs.dist > -0.5 && o.z - rs.dist < 70).sort((a, b) => b.z - a.z);
+  vis.forEach(o => {
+    const p = runProj(o.z - rs.dist);
+    if (o.kind === "gate") {
+      const h = p.half * 0.55;
+      [["left", -1], ["right", 1]].forEach(([side, dir]) => {
+        const g = o[side];
+        const x0 = dir < 0 ? W / 2 - p.half + 2 : W / 2 + 2;
+        const w = p.half - 4;
+        const color = runGood(g) ? f.goodGate : f.badGate;
+        if (f.premium) {
+          const grad = ctx.createLinearGradient(x0, p.y - h, x0 + w, p.y);
+          grad.addColorStop(0, shade(color, 0.45)); grad.addColorStop(1, color);
+          ctx.globalAlpha = 0.82; ctx.fillStyle = grad;
+          ctx.shadowColor = color; ctx.shadowBlur = 12 * p.t;
+        } else {
+          ctx.globalAlpha = 0.72; ctx.fillStyle = color;
+        }
+        ctx.fillRect(x0, p.y - h, w, h);
+        ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = Math.max(1, 3 * p.t);
+        ctx.strokeRect(x0, p.y - h, w, h);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "800 " + Math.max(8, Math.floor(h * 0.42)) + "px system-ui, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(runLabel(g), x0 + w / 2, p.y - h / 2);
+      });
+    } else if (o.kind === "enemy") {
+      const size = Math.max(8, 26 * p.t);
+      runDrawFigures(W / 2, p.y - size * 0.4, size, f.units[1].glyph, Math.min(o.count, 24));
+      runTag(W / 2, p.y - size * 2.3, shortNum(o.count), f.badGate, Math.max(8, 14 * p.t));
+    } else if (o.kind === "boss") {
+      const size = Math.max(14, 90 * p.t);
+      ctx.font = Math.floor(size) + "px system-ui, sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+      if (f.premium) { ctx.shadowColor = "rgba(28,40,51,0.4)"; ctx.shadowBlur = size * 0.15; }
+      ctx.fillText(f.units[2].glyph, W / 2, p.y);
+      ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
+      runTag(W / 2, p.y - size * 1.15, shortNum(o.count), f.badGate, Math.max(9, 18 * p.t));
+    }
+  });
+
+  // The crowd
+  const me = runProj(0);
+  const cx = W / 2 + rs.px * me.half;
+  const size = Math.max(12, W * 0.06);
+  runDrawFigures(cx, me.y + size * 0.3, size, f.units[0].glyph, rs.count);
+  runTag(cx, me.y - size * 1.9, shortNum(rs.count), f.goodGate, size * 0.62);
+
+  rs.pops.forEach(p => {
+    ctx.globalAlpha = 1 - p.t;
+    ctx.font = "800 " + Math.floor(size * 1.1) + "px system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = p.good ? f.goodGate : f.badGate;
+    ctx.fillText(p.text, cx, me.y - size * 3 - p.t * size * 2);
+    ctx.globalAlpha = 1;
+  });
+}
+
+let runLast = 0;
+function runFrame(time) {
+  if (!runOpen) return;
+  const dt = runLast ? Math.min(time - runLast, 50) / 1000 : 0;
+  runLast = time;
+  runUpdate(dt);
+  runDraw();
+  requestAnimationFrame(runFrame);
+}
+
+function runResize() {
+  if (!runOpen || !rs) return;
+  const availW = runStage.clientWidth - 16;
+  const availH = runStage.clientHeight - 16;
+  const W = Math.floor(Math.min(availW, availH * 0.68, 520));
+  const H = Math.floor(Math.min(availH, W * 1.6));
+  rs.W = W; rs.H = H;
+  const d = window.devicePixelRatio || 1;
+  runWrap.style.width = W + "px";
+  runWrap.style.height = H + "px";
+  runCanvas.style.width = W + "px";
+  runCanvas.style.height = H + "px";
+  runCanvas.width = Math.round(W * d);
+  runCanvas.height = Math.round(H * d);
+  runCtx.setTransform(d, 0, 0, d, 0, 0);
+  runDraw();
+}
+
+let runDragging = false;
+function runSteer(event) {
+  const rect = runCanvas.getBoundingClientRect();
+  const me = runProj(0);
+  rs.target = clamp((event.clientX - rect.left - rs.W / 2) / me.half, -0.8, 0.8);
+}
+runCanvas.addEventListener("pointerdown", e => {
+  if (!rs) return;
+  e.preventDefault();
+  runCanvas.setPointerCapture(e.pointerId);
+  runDragging = true;
+  runSteer(e);
+});
+runCanvas.addEventListener("pointermove", e => { if (runDragging && rs) runSteer(e); });
+runCanvas.addEventListener("pointerup", () => { runDragging = false; });
+runCanvas.addEventListener("pointercancel", () => { runDragging = false; });
+document.getElementById("runLeft").addEventListener("click", () => { if (rs) rs.target = -0.5; });
+document.getElementById("runRight").addEventListener("click", () => { if (rs) rs.target = 0.5; });
+document.getElementById("runOverlayButton").addEventListener("click", () => {
+  if (!rs) return;
+  if (rs.state === "won") { rs.level++; runStart(true); }
+  else runStart(false);
+});
+
+function openRunner(file, context) {
+  rs = { file: file, ctx: context || {}, state: "ready", level: 1, score: 0, count: 1, dist: 0, px: 0, target: 0,
+    objs: [], pops: [], trackEnd: 0, W: 300, H: 480 };
+  runOpen = true;
+  runBuildTrack();
+  document.getElementById("runName").textContent = file.themeName + (file.premium ? " premium" : "");
+  document.getElementById("runFor").textContent = "For " + file.customer;
+  runStatus("");
+  runShowOverlay(file.themeName,
+    rs.ctx.orderId != null
+      ? "Play this build the way the customer will. If a runner, enemy, or boss shows up wrong, that is a bug."
+      : "The game from the ads, for real this time. Pick the gate that grows your crowd the most, then outnumber the boss.",
+    "Start");
+  runRoot.hidden = false;
+  runStats();
+  requestAnimationFrame(() => { runResize(); runLast = 0; requestAnimationFrame(runFrame); });
+}
+
+function closeRunner() {
+  runOpen = false;
+  runRoot.hidden = true;
+  const orderId = rs ? rs.ctx.orderId : null;
+  rs = null;
+  finishPlayTest(orderId);
+  lastTick = performance.now();
+  render();
+}
+document.getElementById("runClose").addEventListener("click", closeRunner);
+window.addEventListener("resize", runResize);
+
+// ------------------------------------------------------------------
 // THE DECK ENGINE
 // Reads a deck file and deals either klondike solitaire or jacks or
 // better video poker. Tap a card and the engine moves it to the best
@@ -3602,7 +4091,7 @@ setInterval(() => {
   const dt = Math.min(1, (now - lastTick) / 1000);
   lastTick = now;
 
-  const engineOpen = playOpen || dokuOpen || bubOpen || cardsOpen;
+  const engineOpen = playOpen || dokuOpen || bubOpen || cardsOpen || runOpen;
   if (!engineOpen && !document.hidden) {
     simulate(dt);
     saveClock += dt;

@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-08, v2026.11.08.1. Product lines now open by hiring senior developers: a puzzle designer, a physics programmer, a systems designer, and an art director, each pricier than the last.
+Latest change. 2026-11-09, v2026.11.09. Added the Runner line, the math gate runner from the phone ads, opened by hiring an ad producer.
 
 Full history is in CHANGELOG.md.
