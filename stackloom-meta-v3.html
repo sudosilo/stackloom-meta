@@ -417,7 +417,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3";
+const VERSION = "stackloom-meta v3.1";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -716,14 +716,6 @@ const OFFICES = [
 const UPGRADES = [
   { key: "schema", name: "Theme schema", cost: 800,
     text: "A written rule for what a valid theme file must contain. Terminals write fewer bugs." },
-  { key: "doku", name: "Doku line", cost: 1200,
-    text: "Opens a second product line. Customers start ordering symbol sudoku games in skins like Hackerdoku and Meowdoku, built on a second engine." },
-  { key: "bubble", name: "Bubble line", cost: 1500,
-    text: "Opens a third product line. Customers order bubble shooters in skins like Packet Popper and Pup Pop, all running on one bubble engine." },
-  { key: "cards", name: "Card line", cost: 1800,
-    text: "Opens a fourth product line. Customers order themed card decks for solitaire and video poker. Same deck engine, new suits, new numbers, new card back." },
-  { key: "art", name: "Art desk", cost: 4000,
-    text: "Customers start ordering premium versions with drawn art instead of flat emoji. Premium builds take longer and pay almost double." },
   { key: "tests", name: "Test suite", cost: 1600,
     text: "Automatic checks run the moment a build finishes and catch most bugs before anyone plays the game." },
   { key: "engine", name: "Shared engine", cost: 3000,
@@ -734,6 +726,31 @@ const UPGRADES = [
 
 const AGENT_NAMES = ["Pim", "Rook", "Juno", "Tock", "Nib", "Orla", "Fen", "Wren"];
 const DEV_NAMES = ["Marlo", "Kestrel", "Ines"];
+
+// Senior hires. Each one is more experienced and more expensive than the
+// last, needs the one before it on staff, and opens a product line.
+const SENIORS = [
+  { key: "puzzle", title: "Puzzle designer", name: "Odessa", cost: 2500, salary: 200, office: 1, needs: "dev", line: "doku", lineName: "Doku line",
+    text: "Knows logic puzzles cold. Customers start ordering symbol sudoku games like Hackerdoku and Meowdoku, and doku builds go faster." },
+  { key: "physics", title: "Physics programmer", name: "Teodor", cost: 4500, salary: 300, office: 1, needs: "puzzle", line: "bubble", lineName: "Bubble line",
+    text: "Makes things bounce right. Customers start ordering bubble shooters like Packet Popper and Pup Pop, and bubble builds go faster." },
+  { key: "systems", title: "Systems designer", name: "Halvard", cost: 7500, salary: 420, office: 2, needs: "physics", line: "cards", lineName: "Card line",
+    text: "Reads rulebooks for fun. Customers start ordering themed card decks for solitaire and video poker, and deck builds go faster." },
+  { key: "art", title: "Art director", name: "Celeste", cost: 12000, salary: 600, office: 2, needs: "systems", line: "art", lineName: "premium line",
+    text: "Refuses to ship flat emoji. Customers start ordering premium versions of every line with drawn art, paying almost double. Premium builds go faster." }
+];
+
+function lineOpen(line) {
+  const senior = SENIORS.find(x => x.line === line);
+  return !!(company.upgrades[line] || (senior && company.seniors[senior.key]));
+}
+function seniorFor(line) { const x = SENIORS.find(y => y.line === line); return x && company.seniors[x.key] ? x : null; }
+function lineBoost(order) {
+  let boost = 1;
+  if (seniorFor(order.line || "blocks")) boost *= 1.2;
+  if (order.premium && seniorFor("art")) boost *= 1.2;
+  return boost;
+}
 
 // ------------------------------------------------------------------
 // Small helpers
@@ -755,7 +772,7 @@ function cash(n) { return (n < 0 ? "-$" : "$") + Math.abs(Math.round(n)).toLocal
 function newCompany() {
   return {
     money: 600, reputation: 50, day: 1, dayTimer: 0, time: 0, officeLevel: 0,
-    terminals: [{ job: null }], agents: [], devs: [], upgrades: {},
+    terminals: [{ job: null }], agents: [], devs: [], seniors: {}, upgrades: {},
     orders: [], catalog: [], nextId: 1, offerTimer: 2,
     shipped: 0, bugsShipped: 0, log: []
   };
@@ -1004,16 +1021,16 @@ const HOUSE_GAME = {
 // ------------------------------------------------------------------
 function makeOffer() {
   const lines = ["blocks"];
-  if (company.upgrades.doku) lines.push("doku");
-  if (company.upgrades.bubble) lines.push("bubble");
-  if (company.upgrades.cards) lines.push("cards");
+  if (lineOpen("doku")) lines.push("doku");
+  if (lineOpen("bubble")) lines.push("bubble");
+  if (lineOpen("cards")) lines.push("cards");
   const line = pick(lines);
   let order;
   if (line === "doku") order = makeDokuOffer();
   else if (line === "bubble") order = makeBubbleOffer();
   else if (line === "cards") order = makeCardOffer();
   else order = makeBlockOffer();
-  if (company.upgrades.art && Math.random() < 0.3) {
+  if (lineOpen("art") && Math.random() < 0.3) {
     order.premium = true;
     order.work += PREMIUM.work;
     order.pay = Math.round(order.pay * PREMIUM.payBoost / 5) * 5;
@@ -1203,7 +1220,8 @@ function runAgents() {
 
 function payBills() {
   const c = company;
-  const bill = office().rent + c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + c.terminals.length * PRICES.terminalUpkeep;
+  const seniorPay = SENIORS.filter(x => c.seniors[x.key]).reduce((sum, x) => sum + x.salary, 0);
+  const bill = office().rent + c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + seniorPay + c.terminals.length * PRICES.terminalUpkeep;
   c.money -= bill;
   notify("Day " + (c.day - 1) + " ended. Rent, salaries, and upkeep cost " + cash(bill) + ".");
 }
@@ -1249,7 +1267,7 @@ function simulate(dt) {
     if (terminal.job == null) return;
     const order = findOrder(terminal.job);
     if (!order || order.status !== "building") { terminal.job = null; return; }
-    order.progress += dt * terminalSpeed(i);
+    order.progress += dt * terminalSpeed(i) * lineBoost(order);
     if (order.progress >= order.work) finishBuild(order, i);
   });
 
@@ -1464,6 +1482,27 @@ function renderTeam() {
   else html += `<button class="btn primary wide" data-do="hireDev">Hire a dev for ${cash(PRICES.dev)}</button>`;
   html += `<p class="quiet">${c.devs.length} of ${room.devs} dev ${plural(room.devs, "seat")} used.</p></div>`;
 
+  html += `<h2 class="section-title spaced">Senior hires</h2>
+    <p class="note">Experienced developers cost a lot more and each one needs the one before them on staff. Every senior hire opens a new product line for the studio.</p>`;
+  SENIORS.forEach(x => {
+    const hired = c.seniors[x.key];
+    const prev = x.needs === "dev" ? null : SENIORS.find(y => y.key === x.needs);
+    const hasNeed = x.needs === "dev" ? c.devs.length > 0 : !!c.seniors[x.needs];
+    const roomOk = c.officeLevel >= x.office;
+    let button = "";
+    if (hired) button = "";
+    else if (!hasNeed) button = `<button class="btn wide" disabled>Needs ${x.needs === "dev" ? "a dev on staff first" : "a " + prev.title.toLowerCase() + " on staff first"}</button>`;
+    else if (!roomOk) button = `<button class="btn wide" disabled>Needs the ${OFFICES[x.office].name.toLowerCase()} or bigger</button>`;
+    else button = `<button class="btn primary wide" data-do="hireSenior" data-id="${x.key}">Hire for ${cash(x.cost)}</button>`;
+    const already = !hired && company.upgrades[x.line] ? " The " + x.lineName + " is already open from an older license, so this hire only adds speed." : "";
+    html += `
+      <div class="row">
+        <div class="row-top"><div class="row-name">${hired ? x.title + " " + x.name : x.title}</div><div class="row-state ${hired ? "done" : ""}">${hired ? "On staff" : cash(x.salary) + " a day"}</div></div>
+        <div class="row-sub">${x.text}${already}</div>
+        ${button ? `<div class="actions">${button}</div>` : ""}
+      </div>`;
+  });
+
   html += `<h2 class="section-title spaced">Recent activity</h2>
     <ul class="log">${c.log.length ? c.log.map(line => `<li>${line}</li>`).join("") : "<li>Nothing has happened yet.</li>"}</ul>`;
 
@@ -1657,6 +1696,17 @@ function doAction(action, id) {
         notify("Hired Dev " + name + ".", true);
       }
       break;
+    case "hireSenior": {
+      const x = SENIORS.find(y => y.key === id);
+      if (!x || c.seniors[x.key]) break;
+      const hasNeed = x.needs === "dev" ? c.devs.length > 0 : !!c.seniors[x.needs];
+      if (!hasNeed || c.officeLevel < x.office) { showToast("Not yet. Check what this hire needs first."); break; }
+      if (spend(x.cost)) {
+        c.seniors[x.key] = true;
+        notify("Hired " + x.title.toLowerCase() + " " + x.name + ". " + (x.line === "art" ? "Premium orders are open" : "The " + x.lineName + " is open") + " and customers start asking for it.", true);
+      }
+      break;
+    }
     case "moveOffice": {
       const next = OFFICES[c.officeLevel + 1];
       if (next && spend(next.cost)) { c.officeLevel++; notify("Moved into the " + next.name.toLowerCase() + ".", true); }

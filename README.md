@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-08, v2026.11.08. Added version 3. It brings a Bubble line, a Card line with themed decks for solitaire and video poker, and an Art desk upgrade that unlocks premium orders.
+Latest change. 2026-11-08, v2026.11.08.1. Product lines now open by hiring senior developers: a puzzle designer, a physics programmer, a systems designer, and an art director, each pricier than the last.
 
 Full history is in CHANGELOG.md.
