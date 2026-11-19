@@ -233,6 +233,12 @@
   #matStatus { height: 38px; min-height: 38px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 2px 14px; line-height: 1.3; }
   #matCanvas { display: block; border-radius: 6px; box-shadow: 0 0 0 1px var(--edge); touch-action: none; }
 
+  /* Jam engine screen */
+  .jam { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--page); user-select: none; -webkit-user-select: none; }
+  .jam[hidden] { display: none; }
+  #jamStatus { height: 38px; min-height: 38px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 2px 14px; line-height: 1.3; }
+  #jamCanvas { display: block; border-radius: 6px; box-shadow: 0 0 0 1px var(--edge); touch-action: none; }
+
   /* Card engine screen */
   .cards { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--page); user-select: none; -webkit-user-select: none; }
   .cards[hidden] { display: none; }
@@ -449,6 +455,33 @@
   <div class="dtools">
     <button id="matShuffle" class="btn">Shuffle</button>
     <button id="matHint" class="btn primary">Hint</button>
+  </div>
+</div>
+
+<div id="jam" class="jam" hidden>
+  <header class="play-top">
+    <div class="play-title">
+      <div id="jamName" class="row-name"></div>
+      <div id="jamFor" class="quiet"></div>
+    </div>
+    <div class="stat"><span class="label">Score</span><span id="jamScore" class="value">0</span></div>
+    <div class="stat"><span class="label">Lives</span><span id="jamLives" class="value">0</span></div>
+    <button id="jamClose" class="btn">Done</button>
+  </header>
+  <div id="jamStatus" class="doku-status"></div>
+  <main id="jamStage" class="stage">
+    <div id="jamWrap" class="board-wrap">
+      <canvas id="jamCanvas"></canvas>
+      <div id="jamOverlay" class="overlay">
+        <h1 id="jamOverlayTitle"></h1>
+        <p id="jamOverlayText"></p>
+        <button id="jamOverlayButton" class="btn primary">Start</button>
+      </div>
+    </div>
+  </main>
+  <div class="dtools">
+    <button id="jamRestart" class="btn">Restart</button>
+    <button id="jamHint" class="btn primary">Hint</button>
   </div>
 </div>
 
@@ -840,6 +873,56 @@ const MATCH_MOVES = {
 };
 
 // ------------------------------------------------------------------
+// SEVENTH PRODUCT LINE: JAM, THE PULL OUT PUZZLE
+// The parking lot and unscrew game from every phone. Every piece points
+// one way and can only ever go that way. Tap it and it leaves the board
+// if the path is clear, or bonks into whatever is in front of it. Cars,
+// screws, fish, knives, burritos, carrots. It makes no sense and sells.
+// One jam engine, and every product is a skin file.
+// ------------------------------------------------------------------
+const JAM_THEMES = {
+  cars: { label: "Lot Jam", work: 20, len: 2, board: "#f4f6f8", grid: "#dfe5ec", glow: false,
+    glyphs: ["🚗", "🚕", "🚙", "🚌", "🚓", "🚑"], names: ["car", "taxi", "truck", "bus", "cop car", "ambulance"],
+    colors: ["#d0584f", "#f2c230", "#2463b0", "#f39c4a", "#4a6fe3", "#e8eef4"] },
+  arrows: { label: "Arrow Out", work: 16, len: 1, board: "#ffffff", grid: "#e6ecf5", glow: true,
+    glyphs: ["", "", "", "", "", ""], names: ["pink", "cyan", "lime", "gold", "orange", "violet"],
+    colors: ["#ff2fd6", "#00c8f0", "#29d614", "#ffc400", "#ff6a00", "#a526ff"] },
+  screws: { label: "Screw Loose", work: 18, len: 1, board: "#f6f3ee", grid: "#e2d8c8", glow: false,
+    glyphs: ["🔩", "⚙️", "🪛", "🔧", "🪚", "🔨"], names: ["bolt", "gear", "screwdriver", "wrench", "saw", "hammer"],
+    colors: ["#9aa5b1", "#c9a227", "#2463b0", "#7d8b99", "#b5651d", "#6c757d"] },
+  kayaks: { label: "Paddle Out", work: 20, len: 2, board: "#eef9fc", grid: "#c9e8f1", glow: false,
+    glyphs: ["🛶", "🚣", "⛵", "🛥️", "🚤", "🦆"], names: ["kayak", "rower", "sailboat", "yacht", "speedboat", "duck"],
+    colors: ["#f39c4a", "#d0584f", "#ffffff", "#2463b0", "#f2c230", "#6bb34a"] },
+  trains: { label: "Rail Jam", work: 22, len: 2, board: "#f7f5f2", grid: "#e3ddd3", glow: false,
+    glyphs: ["🚂", "🚃", "🚋", "🚆", "🚇", "🚝"], names: ["engine", "coach", "trolley", "express", "subway", "monorail"],
+    colors: ["#3a3f47", "#d0584f", "#2fb4e6", "#2463b0", "#6bb34a", "#e0a33a"] },
+  knives: { label: "Knife Out", work: 22, len: 2, board: "#fbfbfb", grid: "#e4e7ea", glow: false,
+    glyphs: ["🔪", "🗡️", "🥢", "🍴", "🪓", "⚔️"], names: ["knife", "dagger", "chopsticks", "fork", "axe", "swords"],
+    colors: ["#b8c2cc", "#8a5cb8", "#c68a52", "#2463b0", "#d0584f", "#e0a33a"] },
+  fish: { label: "Fish Out", work: 18, len: 1, board: "#f3fbfd", grid: "#cde9f0", glow: false,
+    glyphs: ["🐟", "🐠", "🐡", "🦈", "🐬", "🦐"], names: ["fish", "clownfish", "puffer", "shark", "dolphin", "shrimp"],
+    colors: ["#2a7fbf", "#f39c4a", "#f2c230", "#7d8b99", "#39b3c6", "#ff7eb6"] },
+  pizza: { label: "Slice Out", work: 18, len: 1, board: "#fffaf2", grid: "#f0e1c8", glow: false,
+    glyphs: ["🍕", "🧀", "🍄", "🫑", "🧅", "🍅"], names: ["slice", "cheese", "mushroom", "pepper", "onion", "tomato"],
+    colors: ["#e8a33d", "#f2c230", "#c9a98a", "#4f9d3a", "#c77dbb", "#d0584f"] },
+  burritos: { label: "Burrito Jam", work: 20, len: 2, board: "#fffbf3", grid: "#efe2c8", glow: false,
+    glyphs: ["🌯", "🌮", "🫔", "🥙", "🌶️", "🥑"], names: ["burrito", "taco", "tamale", "wrap", "chile", "avocado"],
+    colors: ["#e3c08d", "#f2c230", "#d98c3a", "#c68a52", "#d0584f", "#6bb34a"] },
+  carrots: { label: "Carrot Pull", work: 16, len: 1, board: "#f8fbf1", grid: "#dde8c8", glow: false,
+    glyphs: ["🥕", "🥔", "🧄", "🌽", "🥦", "🫛"], names: ["carrot", "potato", "garlic", "corn", "broccoli", "pea pod"],
+    colors: ["#f39c4a", "#c9a98a", "#ece4d6", "#f2c230", "#4f9d3a", "#8cc84b"] }
+};
+
+const JAM_SIZES = {
+  small: { label: "small lot", size: 6, work: 0 },
+  big: { label: "big lot", size: 8, work: 4 }
+};
+const JAM_LIVES = {
+  forgiving: { label: "five lives", lives: 5, work: 0 },
+  strict: { label: "three lives", lives: 3, work: 3 }
+};
+
+// ------------------------------------------------------------------
 // Company rules
 // ------------------------------------------------------------------
 const DAY_SECONDS = 45;
@@ -875,6 +958,8 @@ const SENIORS = [
     text: "Knows logic puzzles cold. Customers start ordering symbol sudoku games like Hackerdoku and Meowdoku, and doku builds go faster." },
   { key: "level", title: "Level designer", name: "Paz", cost: 3500, salary: 250, office: 1, needs: "puzzle", line: "match", lineName: "Match line",
     text: "Can make one board last a thousand levels. Customers start ordering match three games like Sucker Smash and Cache Crush, and match builds go faster." },
+  { key: "hyper", title: "Hypercasual producer", name: "Dov", cost: 5000, salary: 330, office: 1, needs: "level", line: "jam", lineName: "Jam line",
+    text: "Has shipped the same tap to pull out puzzle under hundreds of names. Customers start ordering jam games where cars, screws, fish, and burritos can only go one way, and jam builds go faster." },
   { key: "physics", title: "Physics programmer", name: "Teodor", cost: 4500, salary: 300, office: 1, needs: "puzzle", line: "bubble", lineName: "Bubble line",
     text: "Makes things bounce right. Customers start ordering bubble shooters like Packet Popper and Pup Pop, and bubble builds go faster." },
   { key: "ads", title: "Ad producer", name: "Brisco", cost: 6000, salary: 360, office: 1, needs: "physics", line: "runner", lineName: "Runner line",
@@ -979,7 +1064,9 @@ function isBubble(order) { return order.line === "bubble"; }
 function isCards(order) { return order.line === "cards"; }
 function isRunner(order) { return order.line === "runner"; }
 function isMatch(order) { return order.line === "match"; }
+function isJam(order) { return order.line === "jam"; }
 function lookFor(order) {
+  if (isJam(order)) return JAM_THEMES[order.theme];
   if (isMatch(order)) return MATCH_THEMES[order.theme];
   if (isDoku(order)) return DOKU_THEMES[order.theme];
   if (isBubble(order)) return BUBBLE_THEMES[order.theme];
@@ -993,6 +1080,7 @@ function bugSlots(order) {
   if (isCards(order)) return 4;
   if (isRunner(order)) return 3;
   if (isMatch(order)) return MATCH_COLORS[order.colors].count;
+  if (isJam(order)) return JAM_THEMES[order.theme].colors.length;
   return PIECE_SETS[order.pieceSet].shapes.length;
 }
 
@@ -1005,6 +1093,7 @@ function orderSpec(order) {
     return parts.join(", ") + prem;
   }
   if (isCards(order)) return lookFor(order).label + " for " + CARD_GAMES[order.game].label + prem;
+  if (isJam(order)) return lookFor(order).label + " pull out puzzle, " + JAM_SIZES[order.size].label + ", " + JAM_LIVES[order.lives].label + prem;
   if (isMatch(order)) return lookFor(order).label + " match three, " + MATCH_COLORS[order.colors].label + ", " + MATCH_MOVES[order.moves].label + prem;
   if (isRunner(order)) return lookFor(order).label + " gate runner, " + RUNNER_MATH[order.math].label + ", " + RUNNER_LENGTHS[order.length].label + prem;
   const parts = [lookFor(order).label + " theme"];
@@ -1101,7 +1190,25 @@ function buildMatchFile(customer, themeKey, colorKey, movesKey, premium) {
   };
 }
 
+function buildJamFile(customer, themeKey, sizeKey, livesKey, premium) {
+  const look = JAM_THEMES[themeKey];
+  return {
+    product: "jam",
+    themeName: look.label,
+    customer: customer,
+    premium: !!premium,
+    size: JAM_SIZES[sizeKey].size,
+    lives: JAM_LIVES[livesKey].lives,
+    len: look.len,
+    board: look.board,
+    grid: look.grid,
+    glow: look.glow,
+    kinds: look.colors.map((color, i) => ({ name: look.names[i], glyph: look.glyphs[i], color: color }))
+  };
+}
+
 function buildThemeFile(order) {
+  if (isJam(order)) return buildJamFile(order.customer, order.theme, order.size, order.lives, order.premium);
   if (isMatch(order)) return buildMatchFile(order.customer, order.theme, order.colors, order.moves, order.premium);
   if (isDoku(order)) {
     const file = buildDokuFile(order.customer, order.theme, order.level);
@@ -1143,6 +1250,11 @@ function withBug(file, bug) {
   if (copy.product === "bubble") {
     copy.bubbles[bug.pieceIndex].glyph = "?";
     copy.bubbles[bug.pieceIndex].color = "#c3c8ca";
+    return copy;
+  }
+  if (copy.product === "jam") {
+    copy.kinds[bug.pieceIndex].glyph = "?";
+    copy.kinds[bug.pieceIndex].color = "#c3c8ca";
     return copy;
   }
   if (copy.product === "match") {
@@ -1226,6 +1338,15 @@ const HOUSE_MATCH = {
   file: buildMatchFile("The studio", "candy", "five", "generous", false)
 };
 
+const HOUSE_JAM = {
+  id: "housejam",
+  customer: "the studio",
+  spec: "Lot Jam, the sample pull out puzzle every studio keeps on hand",
+  day: 0,
+  bug: false,
+  file: buildJamFile("The studio", "cars", "small", "forgiving", false)
+};
+
 const HOUSE_GAME = {
   id: "house",
   customer: "the studio",
@@ -1246,6 +1367,7 @@ function makeOffer() {
   if (lineOpen("cards")) lines.push("cards");
   if (lineOpen("runner")) lines.push("runner");
   if (lineOpen("match")) lines.push("match");
+  if (lineOpen("jam")) lines.push("jam");
   const line = pick(lines);
   let order;
   if (line === "doku") order = makeDokuOffer();
@@ -1253,6 +1375,7 @@ function makeOffer() {
   else if (line === "cards") order = makeCardOffer();
   else if (line === "runner") order = makeRunnerOffer();
   else if (line === "match") order = makeMatchOffer();
+  else if (line === "jam") order = makeJamOffer();
   else order = makeBlockOffer();
   if (lineOpen("art") && Math.random() < 0.3) {
     order.premium = true;
@@ -1326,6 +1449,21 @@ function makeMatchOffer() {
     expiresAt: company.time + 40, deadline: 0, readyAt: 0
   };
   order.work = MATCH_THEMES[order.theme].work + MATCH_COLORS[order.colors].work + MATCH_MOVES[order.moves].work;
+  return priceOrder(order, 11);
+}
+
+function makeJamOffer() {
+  const order = {
+    id: company.nextId++,
+    line: "jam",
+    customer: pick(CUSTOMERS),
+    theme: pick(Object.keys(JAM_THEMES)),
+    size: pick(["small", "small", "big"]),
+    lives: pick(["forgiving", "forgiving", "strict"]),
+    status: "offer", progress: 0, terminal: -1, builtBy: -1, bug: null, tested: false,
+    expiresAt: company.time + 40, deadline: 0, readyAt: 0
+  };
+  order.work = JAM_THEMES[order.theme].work + JAM_SIZES[order.size].work + JAM_LIVES[order.lives].work;
   return priceOrder(order, 11);
 }
 
@@ -1568,7 +1706,7 @@ function strip(colors) {
 }
 
 function motifLine(order) {
-  const motifs = (isDoku(order) || isBubble(order) || isCards(order) || isRunner(order) || isMatch(order) ? lookFor(order).glyphs : THEMES[order.theme].motifs).filter(Boolean);
+  const motifs = (isDoku(order) || isBubble(order) || isCards(order) || isRunner(order) || isMatch(order) || isJam(order) ? lookFor(order).glyphs : THEMES[order.theme].motifs).filter(Boolean);
   return motifs.length ? `<div class="motifs">${motifs.join(" ")}</div>` : "";
 }
 
@@ -1804,9 +1942,9 @@ function renderOffice() {
 }
 
 function renderGames() {
-  let html = `<p class="note">Every block game runs on the block engine, every doku on the doku engine, every bubble shooter on the bubble engine, every deck on the deck engine, every gate runner on the runner engine, and every match three on the match engine. The only difference between products on the same engine is the theme file. Premium products are the same file with one flag flipped and a bigger invoice. Tap View file to see one.</p>`;
+  let html = `<p class="note">Every block game runs on the block engine, every doku on the doku engine, every bubble shooter on the bubble engine, every deck on the deck engine, every gate runner on the runner engine, every match three on the match engine, and every pull out puzzle on the jam engine. The only difference between products on the same engine is the theme file. Premium products are the same file with one flag flipped and a bigger invoice. Tap View file to see one.</p>`;
   html += renderHackCard();
-  [HOUSE_GAME, HOUSE_DOKU, HOUSE_BUBBLE, HOUSE_DECK, HOUSE_POKER, HOUSE_RUNNER, HOUSE_MATCH, ...company.catalog].forEach(game => {
+  [HOUSE_GAME, HOUSE_DOKU, HOUSE_BUBBLE, HOUSE_DECK, HOUSE_POKER, HOUSE_RUNNER, HOUSE_MATCH, HOUSE_JAM, ...company.catalog].forEach(game => {
     html += `
       <article class="order">
         ${strip(fileColors(game.file))}
@@ -1885,6 +2023,7 @@ function gameById(id) {
   if (id === "housepoker") return HOUSE_POKER;
   if (id === "houserunner") return HOUSE_RUNNER;
   if (id === "housematch") return HOUSE_MATCH;
+  if (id === "housejam") return HOUSE_JAM;
   return company.catalog.find(game => game.id === id);
 }
 
@@ -1892,6 +2031,7 @@ function fileColors(file) {
   if (file.product === "doku") return file.symbols.map(symbol => symbol.color);
   if (file.product === "bubble") return file.bubbles.map(b => b.color);
   if (file.product === "match") return file.candies.map(p => p.color);
+  if (file.product === "jam") return file.kinds.map(p => p.color);
   if (file.product === "runner") return [file.goodGate, file.badGate, file.road, file.ground, file.sky];
   if (file.product === "cards") return file.suits.map(suit => suit.color).concat(["#2463b0"]);
   return file.pieces.slice(0, 7).map(piece => piece.color);
@@ -2408,6 +2548,7 @@ function openPlay(file, context) {
   else if (file.product === "cards") openCards(file, context);
   else if (file.product === "runner") openRunner(file, context);
   else if (file.product === "match") openMatch(file, context);
+  else if (file.product === "jam") openJam(file, context);
   else openBlocks(file, context);
 }
 
@@ -2461,6 +2602,9 @@ function finishPlayTest(orderId) {
     } else if (isBubble(order)) {
       const bubbleName = BUBBLE_THEMES[order.theme].names[order.bug.pieceIndex];
       notify("Play test found a bug. The " + bubbleName + " bubble had gone grey with a question mark on it. Fixed before shipping.", true);
+    } else if (isJam(order)) {
+      const jamName = JAM_THEMES[order.theme].names[order.bug.pieceIndex];
+      notify("Play test found a bug. The " + jamName + " piece had gone grey with a question mark on it. Fixed before shipping.", true);
     } else if (isMatch(order)) {
       const pieceName = MATCH_THEMES[order.theme].names[order.bug.pieceIndex];
       notify("Play test found a bug. The " + pieceName + " piece had gone grey with a question mark on it. Fixed before shipping.", true);
@@ -4203,6 +4347,383 @@ function closeMatch() {
 }
 document.getElementById("matClose").addEventListener("click", closeMatch);
 window.addEventListener("resize", matResize);
+
+// ------------------------------------------------------------------
+// THE JAM ENGINE
+// Reads a jam skin file and becomes that pull out puzzle. Every piece
+// points one way. Tap it and it slides that way. A clear path sends it
+// off the board, a blocked path bonks it and costs a life. Empty the
+// board to clear the level.
+// ------------------------------------------------------------------
+const JAM_DIRS = [[-1, 0], [0, 1], [1, 0], [0, -1]];
+
+const jamRoot = document.getElementById("jam");
+const jamStage = document.getElementById("jamStage");
+const jamWrap = document.getElementById("jamWrap");
+const jamCanvas = document.getElementById("jamCanvas");
+const jamCtx = jamCanvas.getContext("2d");
+const jamOverlay = document.getElementById("jamOverlay");
+const jamStatusEl = document.getElementById("jamStatus");
+
+let jamOpen = false;
+let js = null;
+
+function jamStatus(text, kind) {
+  jamStatusEl.textContent = text || "";
+  jamStatusEl.className = "doku-status" + (kind ? " " + kind : "");
+}
+function jamShowOverlay(title, text, label) {
+  document.getElementById("jamOverlayTitle").textContent = title;
+  document.getElementById("jamOverlayText").textContent = text;
+  document.getElementById("jamOverlayButton").textContent = label;
+  jamOverlay.hidden = false;
+}
+function jamStats() {
+  document.getElementById("jamScore").textContent = js.score;
+  document.getElementById("jamLives").textContent = js.lives;
+}
+function jamLeft() { return js.pieces.filter(p => !p.gone).length; }
+function jamCount() { jamStatus(jamLeft() + " " + plural(jamLeft(), "piece") + " left on level " + js.level + ".", ""); }
+
+function jamCellsOf(p) {
+  const d = JAM_DIRS[p.dir];
+  const cells = [[p.r, p.c]];
+  for (let i = 1; i < p.len; i++) cells.push([p.r - d[0] * i, p.c - d[1] * i]);
+  return cells;
+}
+function jamInside(r, c) { return r >= 0 && r < js.N && c >= 0 && c < js.N; }
+
+function jamOccupancy(list) {
+  const occ = [];
+  for (let r = 0; r < js.N; r++) occ.push(new Array(js.N).fill(-1));
+  list.forEach(p => { if (!p.gone) jamCellsOf(p).forEach(([r, c]) => { occ[r][c] = p.id; }); });
+  return occ;
+}
+
+// Walks from the head toward the edge. Returns null when the way is
+// clear, or the blocker and how many empty cells sit before it.
+function jamBlocker(p, occ) {
+  const d = JAM_DIRS[p.dir];
+  let r = p.r + d[0], c = p.c + d[1], steps = 0;
+  while (r >= 0 && r < js.N && c >= 0 && c < js.N) {
+    const id = occ[r][c];
+    if (id >= 0 && id !== p.id) return { id: id, dist: steps };
+    steps++;
+    r += d[0]; c += d[1];
+  }
+  return null;
+}
+
+// Removing a piece only ever opens paths, so a board is solvable when
+// greedy removal empties it. Returns the pieces left stuck.
+function jamStuck(list) {
+  const alive = list.map(p => ({ id: p.id, r: p.r, c: p.c, dir: p.dir, len: p.len, gone: false }));
+  let moved = true;
+  while (moved) {
+    moved = false;
+    const occ = jamOccupancy(alive);
+    alive.forEach(p => {
+      if (!p.gone && !jamBlocker(p, occ)) { p.gone = true; moved = true; }
+    });
+  }
+  return alive.filter(p => !p.gone).map(p => p.id);
+}
+
+function jamGenerate() {
+  const N = js.N, len = js.file.len, kinds = js.file.kinds.length;
+  const density = Math.min(0.88, 0.58 + js.level * 0.05);
+  const target = Math.floor(N * N * density / len);
+  let pieces = [];
+  const taken = [];
+  for (let r = 0; r < N; r++) taken.push(new Array(N).fill(false));
+  for (let tries = 0; tries < target * 40 && pieces.length < target; tries++) {
+    const p = { id: pieces.length, r: Math.floor(Math.random() * N), c: Math.floor(Math.random() * N),
+      dir: Math.floor(Math.random() * 4), len: len, k: Math.floor(Math.random() * kinds) };
+    const cells = jamCellsOf(p);
+    if (!cells.every(([r, c]) => jamInside(r, c) && !taken[r][c])) continue;
+    cells.forEach(([r, c]) => { taken[r][c] = true; });
+    pieces.push(p);
+  }
+  for (let iter = 0; iter < 400; iter++) {
+    const stuck = jamStuck(pieces);
+    if (!stuck.length) break;
+    const id = pick(stuck);
+    const idx = pieces.findIndex(p => p.id === id);
+    const p = pieces[idx];
+    if (iter > 200) { pieces.splice(idx, 1); continue; }
+    if (p.len > 1) {
+      const cells = jamCellsOf(p);
+      const tail = cells[cells.length - 1];
+      p.r = tail[0]; p.c = tail[1];
+      p.dir = (p.dir + 2) % 4;
+    } else {
+      p.dir = (p.dir + 1 + Math.floor(Math.random() * 3)) % 4;
+    }
+  }
+  pieces.forEach((p, i) => { p.id = i; p.gone = false; p.off = 0; p.anim = null; p.flash = 0; });
+  js.pieces = pieces;
+}
+
+function jamStart(nextLevel) {
+  if (!nextLevel) { js.level = 1; js.score = 0; }
+  js.lives = js.file.lives;
+  js.hint = null;
+  jamGenerate();
+  js.state = "playing";
+  jamOverlay.hidden = true;
+  jamCount();
+  jamStats();
+}
+
+function jamTap(cell) {
+  if (!js || js.state !== "playing") return;
+  const occ = jamOccupancy(js.pieces);
+  const id = occ[cell[0]][cell[1]];
+  if (id < 0) return;
+  const p = js.pieces[id];
+  if (p.anim) return;
+  js.hint = null;
+  const block = jamBlocker(p, occ);
+  if (!block) {
+    p.gone = true;
+    p.anim = { kind: "out", v: 8 };
+    js.score += 10 * js.level;
+    jamStats();
+    if (!jamLeft()) {
+      js.state = "won";
+      setTimeout(() => {
+        if (!js || js.state !== "won") return;
+        jamShowOverlay("Lot cleared", "Score " + js.score + " with " + js.lives + (js.lives === 1 ? " life" : " lives") + " left.", "Next level");
+      }, 450);
+    } else jamCount();
+    return;
+  }
+  p.anim = { kind: "bonk", t: 0, dist: block.dist + 0.22 };
+  js.pieces[block.id].flash = 0.5;
+  js.lives--;
+  jamStats();
+  const name = js.file.kinds[p.k] ? js.file.kinds[p.k].name : "piece";
+  if (js.lives <= 0) {
+    js.state = "lost";
+    setTimeout(() => {
+      if (!js || js.state !== "lost") return;
+      jamShowOverlay("Out of lives", "Score " + js.score + " on level " + js.level + ". The " + name + " could only go one way.", "Play again");
+    }, 400);
+  } else jamStatus("Bonk. That " + name + " only goes one way. Lives left " + js.lives + ".", "warn");
+}
+
+function jamUpdate(dt) {
+  if (js.hint) { js.hint.t -= dt; if (js.hint.t <= 0) js.hint = null; }
+  js.pieces.forEach(p => {
+    if (p.flash > 0) p.flash = Math.max(0, p.flash - dt);
+    if (!p.anim) return;
+    if (p.anim.kind === "out") {
+      p.anim.v += dt * 40;
+      p.off += p.anim.v * dt;
+      if (p.off > js.N + 3) p.anim = null;
+    } else {
+      p.anim.t += dt / 0.32;
+      p.off = p.anim.dist * Math.sin(Math.PI * Math.min(1, p.anim.t));
+      if (p.anim.t >= 1) { p.off = 0; p.anim = null; }
+    }
+  });
+}
+
+function jamRoundPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function jamArrow(cx, cy, size, dir, color) {
+  const ctx = jamCtx;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(dir * Math.PI / 2);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, -size);
+  ctx.lineTo(size * 0.8, size * 0.15);
+  ctx.lineTo(size * 0.3, size * 0.15);
+  ctx.lineTo(size * 0.3, size * 0.9);
+  ctx.lineTo(-size * 0.3, size * 0.9);
+  ctx.lineTo(-size * 0.3, size * 0.15);
+  ctx.lineTo(-size * 0.8, size * 0.15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function jamDrawPiece(p) {
+  const ctx = jamCtx, S = js.S, f = js.file;
+  const kind = f.kinds[p.k];
+  if (!kind) return;
+  const d = JAM_DIRS[p.dir];
+  const cells = jamCellsOf(p);
+  const rs = cells.map(x => x[0]), cs = cells.map(x => x[1]);
+  const r0 = Math.min(...rs), c0 = Math.min(...cs);
+  const h = (Math.max(...rs) - r0 + 1) * S, w = (Math.max(...cs) - c0 + 1) * S;
+  const inset = Math.max(2, S * 0.07);
+  const x = c0 * S + p.off * d[1] * S + inset, y = r0 * S + p.off * d[0] * S + inset;
+  const bw = w - inset * 2, bh = h - inset * 2;
+  const rad = Math.min(bw, bh) * 0.32;
+  if (f.glow) { ctx.shadowColor = kind.color; ctx.shadowBlur = S * 0.25; }
+  if (f.premium) {
+    const g = ctx.createLinearGradient(x, y, x + bw, y + bh);
+    g.addColorStop(0, shade(kind.color, 0.6));
+    g.addColorStop(0.5, kind.color);
+    g.addColorStop(1, shade(kind.color, -0.4));
+    ctx.fillStyle = g;
+  } else ctx.fillStyle = kind.color;
+  jamRoundPath(ctx, x, y, bw, bh, rad);
+  ctx.fill();
+  ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
+  ctx.lineWidth = Math.max(1.5, S * (f.premium ? 0.05 : 0.035));
+  ctx.strokeStyle = shade(kind.color, -0.5);
+  ctx.stroke();
+  if (f.premium) {
+    ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+    jamRoundPath(ctx, x + bw * 0.12, y + bh * 0.08, bw * 0.76, Math.min(bh, bw) * 0.18, Math.min(bh, bw) * 0.09);
+    ctx.fill();
+  }
+  const cx = x + bw / 2, cy = y + bh / 2;
+  if (kind.glyph) {
+    // The glyph sits toward the tail, the arrow at the nose.
+    const back = p.len > 1 ? S * 0.45 : 0;
+    ctx.fillStyle = "#1c2833";
+    ctx.font = Math.round(S * 0.5) + "px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(kind.glyph, cx - d[1] * back, cy - d[0] * back + S * 0.03);
+    const nose = p.len > 1 ? S * 0.55 : S * 0.3;
+    jamArrow(cx + d[1] * nose, cy + d[0] * nose, S * 0.12, p.dir, "rgba(28, 40, 51, 0.75)");
+  } else {
+    jamArrow(cx, cy, S * 0.3, p.dir, "rgba(255, 255, 255, 0.95)");
+  }
+  if (p.flash > 0) {
+    ctx.globalAlpha = Math.min(1, p.flash * 2);
+    ctx.strokeStyle = "#d0584f";
+    ctx.lineWidth = 3;
+    jamRoundPath(ctx, x - 1, y - 1, bw + 2, bh + 2, rad);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function jamDraw() {
+  if (!js) return;
+  const ctx = jamCtx, f = js.file, S = js.S, W = js.W, N = js.N;
+  ctx.clearRect(0, 0, W, W);
+  ctx.fillStyle = f.board;
+  ctx.fillRect(0, 0, W, W);
+  ctx.fillStyle = f.grid;
+  ctx.globalAlpha = 0.55;
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if ((r + c) % 2) ctx.fillRect(c * S, r * S, S, S);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = "#2463b0";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(1.5, 1.5, W - 3, W - 3);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, W, W); ctx.clip();
+  js.pieces.forEach(p => { if (!p.gone || p.anim) jamDrawPiece(p); });
+  ctx.restore();
+  if (js.hint) {
+    const p = js.pieces[js.hint.id];
+    const a = 0.45 + 0.55 * Math.abs(Math.sin(js.hint.t * 6));
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = "#2fb4e6";
+    ctx.lineWidth = 4;
+    jamCellsOf(p).forEach(([r, c]) => { jamRoundPath(ctx, c * S + 2, r * S + 2, S - 4, S - 4, S * 0.22); ctx.stroke(); });
+    ctx.globalAlpha = 1;
+  }
+}
+
+let jamLast = 0;
+function jamFrame(time) {
+  if (!jamOpen || !js) return;
+  const dt = jamLast ? Math.min(time - jamLast, 50) / 1000 : 0;
+  jamLast = time;
+  jamUpdate(dt);
+  jamDraw();
+  requestAnimationFrame(jamFrame);
+}
+
+function jamResize() {
+  if (!jamOpen || !js) return;
+  const availW = jamStage.clientWidth - 16;
+  const availH = jamStage.clientHeight - 16;
+  const S = Math.max(20, Math.floor(Math.min(availW, availH, 560) / js.N));
+  js.S = S;
+  js.W = S * js.N;
+  const dpr = window.devicePixelRatio || 1;
+  jamWrap.style.width = js.W + "px";
+  jamWrap.style.height = js.W + "px";
+  jamCanvas.style.width = js.W + "px";
+  jamCanvas.style.height = js.W + "px";
+  jamCanvas.width = Math.round(js.W * dpr);
+  jamCanvas.height = Math.round(js.W * dpr);
+  jamCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  jamDraw();
+}
+
+jamCanvas.addEventListener("pointerdown", e => {
+  if (!js || js.state !== "playing") return;
+  e.preventDefault();
+  const rect = jamCanvas.getBoundingClientRect();
+  const c = Math.floor((e.clientX - rect.left) / js.S);
+  const r = Math.floor((e.clientY - rect.top) / js.S);
+  if (jamInside(r, c)) jamTap([r, c]);
+});
+
+document.getElementById("jamHint").addEventListener("click", () => {
+  if (!js || js.state !== "playing") return;
+  const occ = jamOccupancy(js.pieces);
+  const free = js.pieces.filter(p => !p.gone && !jamBlocker(p, occ));
+  if (free.length) js.hint = { id: pick(free).id, t: 2 };
+});
+document.getElementById("jamRestart").addEventListener("click", () => {
+  if (!js || js.state === "ready") return;
+  jamStart(true);
+});
+document.getElementById("jamOverlayButton").addEventListener("click", () => {
+  if (!js) return;
+  if (js.state === "won") { js.level++; jamStart(true); }
+  else jamStart(false);
+});
+
+function openJam(file, context) {
+  js = { file: file, ctx: context || {}, state: "ready", level: 1, score: 0, lives: file.lives, N: file.size,
+    pieces: [], hint: null, S: 40, W: 320 };
+  jamOpen = true;
+  jamGenerate();
+  document.getElementById("jamName").textContent = file.themeName + (file.premium ? " premium" : "");
+  document.getElementById("jamFor").textContent = "For " + file.customer;
+  jamStatus("");
+  jamShowOverlay(file.themeName,
+    js.ctx.orderId != null
+      ? "Play this build the way the customer will. If a piece looks wrong, that is a bug."
+      : "Every piece can only go the way it points. Tap one to send it. Clear the lot without bonking into everything.",
+    "Start");
+  jamRoot.hidden = false;
+  jamStats();
+  requestAnimationFrame(() => { jamResize(); jamLast = 0; requestAnimationFrame(jamFrame); });
+}
+
+function closeJam() {
+  jamOpen = false;
+  jamRoot.hidden = true;
+  const orderId = js ? js.ctx.orderId : null;
+  js = null;
+  finishPlayTest(orderId);
+  lastTick = performance.now();
+  render();
+}
+document.getElementById("jamClose").addEventListener("click", closeJam);
+window.addEventListener("resize", jamResize);
 
 // ------------------------------------------------------------------
 // THE DECK ENGINE
