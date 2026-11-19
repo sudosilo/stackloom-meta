@@ -239,6 +239,54 @@
   #jamStatus { height: 38px; min-height: 38px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 2px 14px; line-height: 1.3; }
   #jamCanvas { display: block; border-radius: 6px; box-shadow: 0 0 0 1px var(--edge); touch-action: none; }
 
+  /* Mob engine screen */
+  .mob { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--mob-bg, var(--page)); user-select: none; -webkit-user-select: none; }
+  .mob[hidden] { display: none; }
+  .mob-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; padding: 6px 12px 0; }
+  .mbar { position: relative; height: 18px; border-radius: 9px; background: #e6ecf5; overflow: hidden; border: 1px solid var(--edge); }
+  .mbar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #2463b0; transition: width 0.15s; }
+  .mbar.st i { background: #2fb4e6; }
+  .mbar.hp i { background: #d0584f; }
+  .mbar.xp i { background: #8f6ee8; }
+  .mbar span { position: relative; display: block; font-size: 11px; line-height: 18px; padding-left: 8px; font-weight: 600; color: #1c2833; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #mobFacts { height: 20px; overflow: hidden; padding: 4px 12px 0; font-size: 13px; color: var(--accent); font-weight: 600; text-align: center; white-space: nowrap; text-overflow: ellipsis; }
+  #mobStatus, #frmStatus { height: 40px; min-height: 40px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 2px 14px; line-height: 1.3; }
+  .mob-main { position: relative; flex: 1; min-height: 0; }
+  .mob-list { position: absolute; inset: 0; overflow-y: auto; padding: 0 12px 10px; }
+  .mob-sec { font-size: 12px; color: var(--muted); padding: 12px 0 4px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 650; }
+  .mob-row { display: flex; align-items: center; gap: 10px; height: 60px; border-bottom: 1px solid var(--edge); }
+  .mob-glyph { width: 42px; height: 42px; flex: none; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; border: 2px solid rgba(28, 40, 51, 0.18); }
+  .mob-txt { flex: 1; min-width: 0; }
+  .mob-txt div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mob-name { font-weight: 650; }
+  .mob-go { width: 86px; flex: none; }
+  .mob .dim, .frm .dim { opacity: 0.4; }
+  .mob .overlay, .frm .overlay { border-radius: 0; }
+  .mob.premium .mob-glyph { box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.55), 0 3px 8px rgba(36, 99, 176, 0.28); border-color: #2463b0; }
+  .mob.premium .mob-row { background: linear-gradient(90deg, rgba(36, 99, 176, 0.06), transparent); }
+
+  /* Farm engine screen */
+  .frm { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--frm-bg, var(--page)); user-select: none; -webkit-user-select: none; }
+  .frm[hidden] { display: none; }
+  #frmXp { margin: 6px 12px 0; }
+  .frm-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 6px 12px; }
+  .frm-wrap { position: relative; --side: min(calc(100vw - 24px), calc(100dvh - 380px), 520px); width: var(--side); height: var(--side); }
+  .frm-grid { width: 100%; height: 100%; display: grid; gap: 6px; padding: 6px; border-radius: 10px; border: 3px solid #2463b0; background: #8a6a48; }
+  .frm-plot { position: relative; border: none; border-radius: 8px; padding: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: manipulation; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.15); }
+  .frm-plot span { font-size: calc(var(--side) / var(--frm-n, 4) * 0.5); line-height: 1; }
+  .frm-plot.young span { font-size: calc(var(--side) / var(--frm-n, 4) * 0.3); }
+  .frm-plot.half span { font-size: calc(var(--side) / var(--frm-n, 4) * 0.36); opacity: 0.75; }
+  .frm-plot.ripe { box-shadow: inset 0 0 0 3px #2463b0, inset 0 -4px 0 rgba(0, 0, 0, 0.15); }
+  .frm-plot.dead { filter: grayscale(0.8); }
+  .frm-plot i { position: absolute; left: 0; bottom: 0; height: 5px; width: 0; background: #2463b0; }
+  .frm.premium .frm-plot { box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.35), inset 0 -5px 0 rgba(0, 0, 0, 0.2), 0 2px 6px rgba(36, 99, 176, 0.25); }
+  .frm.premium .frm-plot.ripe { box-shadow: inset 0 0 0 3px #2fb4e6, inset 0 4px 0 rgba(255, 255, 255, 0.35), 0 0 12px rgba(47, 180, 230, 0.7); }
+  .frm-seeds { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; padding: 0 12px; }
+  .frm-seed { height: 58px; border-radius: 12px; background: var(--surface); border: 1px solid var(--edge); padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+  .frm-seed.sel { border: 3px solid #2463b0; }
+  .frm-sg { font-size: 22px; line-height: 1; }
+  .frm-sc { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
   /* Card engine screen */
   .cards { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--page); user-select: none; -webkit-user-select: none; }
   .cards[hidden] { display: none; }
@@ -482,6 +530,67 @@
   <div class="dtools">
     <button id="jamRestart" class="btn">Restart</button>
     <button id="jamHint" class="btn primary">Hint</button>
+  </div>
+</div>
+
+<div id="mob" class="mob" hidden>
+  <header class="play-top">
+    <div class="play-title">
+      <div id="mobName" class="row-name"></div>
+      <div id="mobFor" class="quiet"></div>
+    </div>
+    <div class="stat"><span class="label">Cash</span><span id="mobCash" class="value">0</span></div>
+    <div class="stat"><span class="label">Level</span><span id="mobLevel" class="value">1</span></div>
+    <button id="mobClose" class="btn">Done</button>
+  </header>
+  <div class="mob-bars">
+    <div id="mobEnergy" class="mbar" data-name="Energy"><i></i><span></span></div>
+    <div id="mobStamina" class="mbar st" data-name="Stamina"><i></i><span></span></div>
+    <div id="mobHealth" class="mbar hp" data-name="Health"><i></i><span></span></div>
+    <div id="mobXp" class="mbar xp" data-name="XP"><i></i><span></span></div>
+  </div>
+  <div id="mobFacts"></div>
+  <div id="mobStatus" class="doku-status"></div>
+  <div class="mob-main">
+    <div id="mobList" class="mob-list"></div>
+    <div id="mobOverlay" class="overlay">
+      <h1 id="mobOverlayTitle"></h1>
+      <p id="mobOverlayText"></p>
+      <button id="mobOverlayButton" class="btn primary">Start</button>
+    </div>
+  </div>
+  <div class="dtools">
+    <button id="mobPoints" class="btn">Buy points</button>
+    <button id="mobInvite" class="btn primary">Invite friends</button>
+  </div>
+</div>
+
+<div id="frm" class="frm" hidden>
+  <header class="play-top">
+    <div class="play-title">
+      <div id="frmName" class="row-name"></div>
+      <div id="frmFor" class="quiet"></div>
+    </div>
+    <div class="stat"><span class="label">Coins</span><span id="frmCoins" class="value">0</span></div>
+    <div class="stat"><span class="label">Level</span><span id="frmLevel" class="value">1</span></div>
+    <button id="frmClose" class="btn">Done</button>
+  </header>
+  <div id="frmXp" class="mbar xp"><i></i><span></span></div>
+  <div id="frmStatus" class="doku-status"></div>
+  <main class="frm-stage">
+    <div class="frm-wrap">
+      <div id="frmGrid" class="frm-grid"></div>
+      <div id="frmOverlay" class="overlay">
+        <h1 id="frmOverlayTitle"></h1>
+        <p id="frmOverlayText"></p>
+        <button id="frmOverlayButton" class="btn primary">Start</button>
+      </div>
+    </div>
+  </main>
+  <div id="frmSeeds" class="frm-seeds"></div>
+  <div class="dtools">
+    <button id="frmHarvestAll" class="btn">Harvest all</button>
+    <button id="frmWater" class="btn primary">Beg for water</button>
   </div>
 </div>
 
@@ -923,6 +1032,103 @@ const JAM_LIVES = {
 };
 
 // ------------------------------------------------------------------
+// EIGHTH PRODUCT LINE: MOB, THE ENERGY AND JOBS GAME
+// The social network crime game. Spend energy on jobs, stamina on
+// fights, beg everyone you know to join your crew, and climb the ranks.
+// The original got cloned with vampires, zombies, and pirates on the
+// same engine, so this one ships with even dumber skins.
+// ------------------------------------------------------------------
+const MOB_THEMES = {
+  mob: { label: "Made Guys", work: 22, hero: "🕴️", crew: "crew", bg: "#f6f4f0", accent: "#2463b0",
+    ranks: ["Errand Boy", "Lookout", "Associate", "Soldier", "Enforcer", "Made Guy", "Capo", "Underboss", "Consigliere", "Don"],
+    glyphs: ["💵", "🎲", "🔢", "🚚", "🔥", "🥊"], names: ["Collect a debt", "Rough up a bookie", "Run the numbers", "Hijack a truck", "Torch a warehouse", "Fix a prize fight"],
+    colors: ["#6bb34a", "#d0584f", "#2463b0", "#e0a33a", "#f39c4a", "#8a5cb8"],
+    gear: [["Brass knuckles", "👊"], ["Baseball bat", "🏏"], ["Getaway car", "🚗"], ["Crooked lawyer", "💼"]],
+    rivals: [["Two Spoons", "🥄"], ["The Dock Crew", "⚓"], ["The Laundromat Gang", "🧺"], ["The Big Boss", "🎩"]] },
+  vampire: { label: "Fang Feud", work: 22, hero: "🧛", crew: "coven", bg: "#f7f3f6", accent: "#2463b0",
+    ranks: ["Fledgling", "Night Owl", "Biter", "Stalker", "Count", "Baron", "Duke", "Elder", "Ancient", "Prince of Night"],
+    glyphs: ["🏃", "🩸", "🦇", "🌀", "🌅", "🧄"], names: ["Bite a jogger", "Raid a blood bank", "Haunt a goth club", "Hypnotize a bouncer", "Outrun the sunrise", "Dodge a garlic farmer"],
+    colors: ["#d0584f", "#a8323e", "#5b4bdb", "#2fb4e6", "#f39c4a", "#c9b27a"],
+    gear: [["Cape", "🧣"], ["Coffin", "⚰️"], ["Bat swarm", "🦇"], ["Castle", "🏰"]],
+    rivals: [["The Werewolf Pack", "🐺"], ["A Hunter With a Stake", "🔨"], ["The Night Shift Nurses", "🏥"], ["The Old Count", "🦇"]] },
+  zombie: { label: "Brain Drain", work: 20, hero: "🧟", crew: "horde", bg: "#f3f7f1", accent: "#2463b0",
+    ranks: ["Fresh Corpse", "Shambler", "Groaner", "Lurcher", "Biter", "Horde Member", "Horde Boss", "Plague Bearer", "Apex Undead", "Zombie King"],
+    glyphs: ["🛒", "🪟", "📬", "🧠", "🏘️", "🏥"], names: ["Lurch through a mall", "Moan at a window", "Chase a mail carrier", "Eat a brain", "Shamble to the suburbs", "Overrun a hospital"],
+    colors: ["#7d8b99", "#2fb4e6", "#2463b0", "#ff7eb6", "#6bb34a", "#d0584f"],
+    gear: [["Torn hoodie", "🧥"], ["Shopping cart", "🛒"], ["Ice cream truck", "🍦"], ["Infected blimp", "🎈"]],
+    rivals: [["Doomsday Preppers", "🥫"], ["A Guy With a Shovel", "🪏"], ["The National Guard", "🪖"], ["A Rival Horde", "🧟"]] },
+  pirate: { label: "Plank Wars", work: 22, hero: "🏴‍☠️", crew: "crew", bg: "#f2f8fb", accent: "#2463b0",
+    ranks: ["Deck Swabber", "Powder Monkey", "Deckhand", "Gunner", "Boatswain", "Quartermaster", "First Mate", "Captain", "Commodore", "Pirate King"],
+    glyphs: ["🧽", "🦜", "🪙", "⛵", "🗺️", "💣"], names: ["Swab the deck", "Steal a parrot", "Bury treasure", "Raid a merchant", "Find the map", "Sink a navy ship"],
+    colors: ["#f2c230", "#6bb34a", "#e0a33a", "#2463b0", "#c68a52", "#3a3f47"],
+    gear: [["Cutlass", "🗡️"], ["Spyglass", "🔭"], ["Peg leg", "🦵"], ["Galleon", "🚢"]],
+    rivals: [["A Seagull Flock", "🐦"], ["The Navy", "⚓"], ["A Rival Crew", "🏴"], ["The Kraken", "🐙"]] },
+  ninja: { label: "Shadow Clan", work: 20, hero: "🥷", crew: "clan", bg: "#f4f5f8", accent: "#2463b0",
+    ranks: ["Trainee", "Shadow", "Silent Step", "Blade", "Smoke", "Phantom", "Assassin", "Shadow Master", "Grandmaster", "Clan Head"],
+    glyphs: ["👀", "🌳", "⭐", "📜", "💨", "🥋"], names: ["Sneak past a guard", "Hide in a bush", "Throw some stars", "Steal a scroll", "Drop smoke", "Rob a dojo"],
+    colors: ["#2463b0", "#4f9d3a", "#f2c230", "#c9a98a", "#9aa5b1", "#d0584f"],
+    gear: [["Katana", "🗡️"], ["Smoke bombs", "💨"], ["Grappling hook", "🪝"], ["Secret fortress", "🏯"]],
+    rivals: [["The Samurai Patrol", "⚔️"], ["A Rival Clan", "🥷"], ["A Very Alert Dog", "🐕"], ["The Shogun", "👑"]] },
+  lunch: { label: "Tray Wars", work: 24, hero: "👵", crew: "lunch crew", bg: "#fbf8f1", accent: "#2463b0",
+    ranks: ["Tray Washer", "Line Server", "Ladle Hand", "Milk Monitor", "Tot Captain", "Head Server", "Kitchen Boss", "District Cook", "Menu Czar", "Lunch Lady Supreme"],
+    glyphs: ["🍖", "🥔", "🥛", "📱", "🍕", "🚫"], names: ["Serve mystery meat", "Hoard tater tots", "Run the milk racket", "Confiscate a phone", "Rig pizza Friday", "Ban a kid from seconds"],
+    colors: ["#c68a52", "#e0a33a", "#2fb4e6", "#2463b0", "#d0584f", "#7d8b99"],
+    gear: [["Hairnet", "🕸️"], ["Giant ladle", "🥄"], ["Industrial fryer", "🍟"], ["Walk in freezer", "🧊"]],
+    rivals: [["The Vending Machine", "🥤"], ["The Health Inspector", "📋"], ["The Food Truck Out Front", "🚚"], ["The PTA", "🗣️"]] },
+  cowboy: { label: "Saddle Feud", work: 20, hero: "🤠", crew: "posse", bg: "#fbf6ee", accent: "#2463b0",
+    ranks: ["Greenhorn", "Ranch Hand", "Wrangler", "Drifter", "Gunslinger", "Outlaw", "Desperado", "Bandit Chief", "Legend", "Boss of the Range"],
+    glyphs: ["🐄", "🃏", "🍾", "🐎", "🍺", "🚂"], names: ["Rustle some cattle", "Cheat at cards", "Shoot a bottle", "Rob a stagecoach", "Run a saloon", "Hold up a train"],
+    colors: ["#8b6b3d", "#2463b0", "#4f9d3a", "#c68a52", "#e0a33a", "#3a3f47"],
+    gear: [["Boots", "👢"], ["Lasso", "🪢"], ["Fast horse", "🐎"], ["Gold mine", "⛏️"]],
+    rivals: [["A Coyote Pack", "🐺"], ["The Sheriff", "⭐"], ["A Rival Gang", "🤠"], ["A Very Big Rattlesnake", "🐍"]] }
+};
+const MOB_ENERGY = {
+  generous: { label: "generous energy", regen: 1.5, work: 0 },
+  stingy: { label: "stingy energy", regen: 4, work: 3 }
+};
+const MOB_LENGTHS = {
+  short: { label: "short climb", goal: 6, work: 0 },
+  long: { label: "long climb", goal: 10, work: 4 }
+};
+
+// ------------------------------------------------------------------
+// NINTH PRODUCT LINE: FARM, THE CROP TIMER GAME
+// Plant, wait, harvest, and beg your friends to water your stuff. The
+// crops can be anything. Fish grow in dirt here. Money grows on plots.
+// ------------------------------------------------------------------
+const FARM_THEMES = {
+  farm: { label: "Crop Town", work: 20, soil: "#c9a27a", bg: "#f6f9f1",
+    glyphs: ["🥕", "🍓", "🌽", "🎃", "🍉", "🌻"], names: ["carrot", "strawberry", "corn", "pumpkin", "watermelon", "sunflower"],
+    colors: ["#f39c4a", "#d0584f", "#f2c230", "#e8862e", "#4f9d3a", "#f2c230"] },
+  moon: { label: "Moon Acres", work: 24, soil: "#b9b6cf", bg: "#f5f5fb",
+    glyphs: ["🍄", "🪨", "🥚", "⭐", "🪐", "👽"], names: ["space mushroom", "moon rock", "alien egg", "star fruit", "ringed planet", "little green man"],
+    colors: ["#d0584f", "#7d8b99", "#ece4d6", "#f2c230", "#8f6ee8", "#6bb34a"] },
+  fish: { label: "Pond Ville", work: 22, soil: "#9fd0e0", bg: "#f2f9fc",
+    glyphs: ["🐟", "🦐", "🦀", "🐡", "🐙", "🦞"], names: ["minnow", "shrimp", "crab", "puffer", "octopus", "lobster"],
+    colors: ["#2a7fbf", "#ff7eb6", "#d0584f", "#f2c230", "#e76f6f", "#c0392b"] },
+  bakery: { label: "Bread Acres", work: 20, soil: "#e8cfa5", bg: "#fffaf2",
+    glyphs: ["🥐", "🥯", "🧁", "🍩", "🥧", "🎂"], names: ["croissant", "bagel", "cupcake", "donut", "pie", "birthday cake"],
+    colors: ["#e0a33a", "#c68a52", "#ff7eb6", "#d49a5e", "#c9733a", "#f2c230"] },
+  robot: { label: "Bolt Farm", work: 22, soil: "#b8c2cc", bg: "#f3f6f9",
+    glyphs: ["🔩", "🔋", "⚙️", "💾", "📡", "🤖"], names: ["bolt", "battery", "gear", "floppy disk", "satellite dish", "robot"],
+    colors: ["#7d8b99", "#4f9d3a", "#9aa5b1", "#2463b0", "#2fb4e6", "#5b6b7a"] },
+  desert: { label: "Dust Bowl", work: 20, soil: "#e3c38f", bg: "#fdf8ef",
+    glyphs: ["🌵", "🌶️", "🦂", "🦎", "🐍", "🪙"], names: ["cactus", "chile", "scorpion", "lizard", "rattlesnake", "gold nugget"],
+    colors: ["#4f9d3a", "#d0584f", "#8b6b3d", "#6bb34a", "#a3c45a", "#e0a33a"] },
+  cash: { label: "Money Tree", work: 24, soil: "#a8c98a", bg: "#f4faf0",
+    glyphs: ["🪙", "💵", "💳", "💎", "📈", "🏦"], names: ["penny", "dollar", "credit card", "gem", "stock chart", "bank"],
+    colors: ["#e0a33a", "#6bb34a", "#2463b0", "#7fc8f0", "#d0584f", "#7d8b99"] }
+};
+const FARM_SIZES = {
+  small: { label: "small farm", size: 4, work: 0 },
+  big: { label: "big farm", size: 5, work: 4 }
+};
+const FARM_ROT = {
+  relaxed: { label: "crops never rot", rot: false, work: 0 },
+  rot: { label: "crops rot", rot: true, work: 3 }
+};
+
+// ------------------------------------------------------------------
 // Company rules
 // ------------------------------------------------------------------
 const DAY_SECONDS = 45;
@@ -960,6 +1166,10 @@ const SENIORS = [
     text: "Can make one board last a thousand levels. Customers start ordering match three games like Sucker Smash and Cache Crush, and match builds go faster." },
   { key: "hyper", title: "Hypercasual producer", name: "Dov", cost: 5000, salary: 330, office: 1, needs: "level", line: "jam", lineName: "Jam line",
     text: "Has shipped the same tap to pull out puzzle under hundreds of names. Customers start ordering jam games where cars, screws, fish, and burritos can only go one way, and jam builds go faster." },
+  { key: "growth", title: "Growth hacker", name: "Skip", cost: 4000, salary: 280, office: 1, needs: "level", line: "mob", lineName: "Mob line",
+    text: "Believes every game should beg the player to invite their friends. Customers start ordering energy and jobs games like Made Guys and Fang Feud, and mob builds go faster." },
+  { key: "retention", title: "Retention designer", name: "Wynn", cost: 5500, salary: 340, office: 1, needs: "growth", line: "farm", lineName: "Farm line",
+    text: "Knows a crop that rots overnight drags players back every morning. Customers start ordering crop timer games like Crop Town and Moon Acres, and farm builds go faster." },
   { key: "physics", title: "Physics programmer", name: "Teodor", cost: 4500, salary: 300, office: 1, needs: "puzzle", line: "bubble", lineName: "Bubble line",
     text: "Makes things bounce right. Customers start ordering bubble shooters like Packet Popper and Pup Pop, and bubble builds go faster." },
   { key: "ads", title: "Ad producer", name: "Brisco", cost: 6000, salary: 360, office: 1, needs: "physics", line: "runner", lineName: "Runner line",
@@ -1065,7 +1275,11 @@ function isCards(order) { return order.line === "cards"; }
 function isRunner(order) { return order.line === "runner"; }
 function isMatch(order) { return order.line === "match"; }
 function isJam(order) { return order.line === "jam"; }
+function isMob(order) { return order.line === "mob"; }
+function isFarm(order) { return order.line === "farm"; }
 function lookFor(order) {
+  if (isMob(order)) return MOB_THEMES[order.theme];
+  if (isFarm(order)) return FARM_THEMES[order.theme];
   if (isJam(order)) return JAM_THEMES[order.theme];
   if (isMatch(order)) return MATCH_THEMES[order.theme];
   if (isDoku(order)) return DOKU_THEMES[order.theme];
@@ -1081,6 +1295,8 @@ function bugSlots(order) {
   if (isRunner(order)) return 3;
   if (isMatch(order)) return MATCH_COLORS[order.colors].count;
   if (isJam(order)) return JAM_THEMES[order.theme].colors.length;
+  if (isMob(order)) return MOB_THEMES[order.theme].glyphs.length;
+  if (isFarm(order)) return FARM_THEMES[order.theme].glyphs.length;
   return PIECE_SETS[order.pieceSet].shapes.length;
 }
 
@@ -1093,6 +1309,8 @@ function orderSpec(order) {
     return parts.join(", ") + prem;
   }
   if (isCards(order)) return lookFor(order).label + " for " + CARD_GAMES[order.game].label + prem;
+  if (isMob(order)) return lookFor(order).label + " energy and jobs game, " + MOB_ENERGY[order.energy].label + ", " + MOB_LENGTHS[order.length].label + prem;
+  if (isFarm(order)) return lookFor(order).label + " crop timer game, " + FARM_SIZES[order.size].label + ", " + FARM_ROT[order.rot].label + prem;
   if (isJam(order)) return lookFor(order).label + " pull out puzzle, " + JAM_SIZES[order.size].label + ", " + JAM_LIVES[order.lives].label + prem;
   if (isMatch(order)) return lookFor(order).label + " match three, " + MATCH_COLORS[order.colors].label + ", " + MATCH_MOVES[order.moves].label + prem;
   if (isRunner(order)) return lookFor(order).label + " gate runner, " + RUNNER_MATH[order.math].label + ", " + RUNNER_LENGTHS[order.length].label + prem;
@@ -1207,7 +1425,43 @@ function buildJamFile(customer, themeKey, sizeKey, livesKey, premium) {
   };
 }
 
+function buildMobFile(customer, themeKey, energyKey, lengthKey, premium) {
+  const look = MOB_THEMES[themeKey];
+  return {
+    product: "mob",
+    themeName: look.label,
+    customer: customer,
+    premium: !!premium,
+    hero: look.hero,
+    crew: look.crew,
+    bg: look.bg,
+    regen: MOB_ENERGY[energyKey].regen,
+    goal: MOB_LENGTHS[lengthKey].goal,
+    ranks: look.ranks.slice(),
+    jobs: look.names.map((name, i) => ({ name: name, glyph: look.glyphs[i], color: look.colors[i] })),
+    gear: look.gear.map(g => ({ name: g[0], glyph: g[1] })),
+    rivals: look.rivals.map(r => ({ name: r[0], glyph: r[1] }))
+  };
+}
+
+function buildFarmFile(customer, themeKey, sizeKey, rotKey, premium) {
+  const look = FARM_THEMES[themeKey];
+  return {
+    product: "farm",
+    themeName: look.label,
+    customer: customer,
+    premium: !!premium,
+    size: FARM_SIZES[sizeKey].size,
+    rot: FARM_ROT[rotKey].rot,
+    soil: look.soil,
+    bg: look.bg,
+    crops: look.names.map((name, i) => ({ name: name, glyph: look.glyphs[i], color: look.colors[i] }))
+  };
+}
+
 function buildThemeFile(order) {
+  if (isMob(order)) return buildMobFile(order.customer, order.theme, order.energy, order.length, order.premium);
+  if (isFarm(order)) return buildFarmFile(order.customer, order.theme, order.size, order.rot, order.premium);
   if (isJam(order)) return buildJamFile(order.customer, order.theme, order.size, order.lives, order.premium);
   if (isMatch(order)) return buildMatchFile(order.customer, order.theme, order.colors, order.moves, order.premium);
   if (isDoku(order)) {
@@ -1250,6 +1504,16 @@ function withBug(file, bug) {
   if (copy.product === "bubble") {
     copy.bubbles[bug.pieceIndex].glyph = "?";
     copy.bubbles[bug.pieceIndex].color = "#c3c8ca";
+    return copy;
+  }
+  if (copy.product === "mob") {
+    copy.jobs[bug.pieceIndex].glyph = "?";
+    copy.jobs[bug.pieceIndex].color = "#c3c8ca";
+    return copy;
+  }
+  if (copy.product === "farm") {
+    copy.crops[bug.pieceIndex].glyph = "?";
+    copy.crops[bug.pieceIndex].color = "#c3c8ca";
     return copy;
   }
   if (copy.product === "jam") {
@@ -1347,6 +1611,24 @@ const HOUSE_JAM = {
   file: buildJamFile("The studio", "cars", "small", "forgiving", false)
 };
 
+const HOUSE_MOB = {
+  id: "housemob",
+  customer: "the studio",
+  spec: "Made Guys, the sample energy and jobs game every studio keeps on hand",
+  day: 0,
+  bug: false,
+  file: buildMobFile("The studio", "mob", "generous", "short", false)
+};
+
+const HOUSE_FARM = {
+  id: "housefarm",
+  customer: "the studio",
+  spec: "Crop Town, the sample crop timer game every studio keeps on hand",
+  day: 0,
+  bug: false,
+  file: buildFarmFile("The studio", "farm", "small", "relaxed", false)
+};
+
 const HOUSE_GAME = {
   id: "house",
   customer: "the studio",
@@ -1368,6 +1650,8 @@ function makeOffer() {
   if (lineOpen("runner")) lines.push("runner");
   if (lineOpen("match")) lines.push("match");
   if (lineOpen("jam")) lines.push("jam");
+  if (lineOpen("mob")) lines.push("mob");
+  if (lineOpen("farm")) lines.push("farm");
   const line = pick(lines);
   let order;
   if (line === "doku") order = makeDokuOffer();
@@ -1376,6 +1660,8 @@ function makeOffer() {
   else if (line === "runner") order = makeRunnerOffer();
   else if (line === "match") order = makeMatchOffer();
   else if (line === "jam") order = makeJamOffer();
+  else if (line === "mob") order = makeMobOffer();
+  else if (line === "farm") order = makeFarmOffer();
   else order = makeBlockOffer();
   if (lineOpen("art") && Math.random() < 0.3) {
     order.premium = true;
@@ -1450,6 +1736,36 @@ function makeMatchOffer() {
   };
   order.work = MATCH_THEMES[order.theme].work + MATCH_COLORS[order.colors].work + MATCH_MOVES[order.moves].work;
   return priceOrder(order, 11);
+}
+
+function makeMobOffer() {
+  const order = {
+    id: company.nextId++,
+    line: "mob",
+    customer: pick(CUSTOMERS),
+    theme: pick(Object.keys(MOB_THEMES)),
+    energy: pick(["generous", "generous", "stingy"]),
+    length: pick(["short", "short", "long"]),
+    status: "offer", progress: 0, terminal: -1, builtBy: -1, bug: null, tested: false,
+    expiresAt: company.time + 40, deadline: 0, readyAt: 0
+  };
+  order.work = MOB_THEMES[order.theme].work + MOB_ENERGY[order.energy].work + MOB_LENGTHS[order.length].work;
+  return priceOrder(order, 12);
+}
+
+function makeFarmOffer() {
+  const order = {
+    id: company.nextId++,
+    line: "farm",
+    customer: pick(CUSTOMERS),
+    theme: pick(Object.keys(FARM_THEMES)),
+    size: pick(["small", "small", "big"]),
+    rot: pick(["relaxed", "rot", "rot"]),
+    status: "offer", progress: 0, terminal: -1, builtBy: -1, bug: null, tested: false,
+    expiresAt: company.time + 40, deadline: 0, readyAt: 0
+  };
+  order.work = FARM_THEMES[order.theme].work + FARM_SIZES[order.size].work + FARM_ROT[order.rot].work;
+  return priceOrder(order, 12);
 }
 
 function makeJamOffer() {
@@ -1706,7 +2022,7 @@ function strip(colors) {
 }
 
 function motifLine(order) {
-  const motifs = (isDoku(order) || isBubble(order) || isCards(order) || isRunner(order) || isMatch(order) || isJam(order) ? lookFor(order).glyphs : THEMES[order.theme].motifs).filter(Boolean);
+  const motifs = (isDoku(order) || isBubble(order) || isCards(order) || isRunner(order) || isMatch(order) || isJam(order) || isMob(order) || isFarm(order) ? lookFor(order).glyphs : THEMES[order.theme].motifs).filter(Boolean);
   return motifs.length ? `<div class="motifs">${motifs.join(" ")}</div>` : "";
 }
 
@@ -1942,9 +2258,9 @@ function renderOffice() {
 }
 
 function renderGames() {
-  let html = `<p class="note">Every block game runs on the block engine, every doku on the doku engine, every bubble shooter on the bubble engine, every deck on the deck engine, every gate runner on the runner engine, every match three on the match engine, and every pull out puzzle on the jam engine. The only difference between products on the same engine is the theme file. Premium products are the same file with one flag flipped and a bigger invoice. Tap View file to see one.</p>`;
+  let html = `<p class="note">Every block game runs on the block engine, every doku on the doku engine, every bubble shooter on the bubble engine, every deck on the deck engine, every gate runner on the runner engine, every match three on the match engine, every pull out puzzle on the jam engine, every energy and jobs game on the mob engine, and every crop timer on the farm engine. The only difference between products on the same engine is the theme file. Premium products are the same file with one flag flipped and a bigger invoice. Tap View file to see one.</p>`;
   html += renderHackCard();
-  [HOUSE_GAME, HOUSE_DOKU, HOUSE_BUBBLE, HOUSE_DECK, HOUSE_POKER, HOUSE_RUNNER, HOUSE_MATCH, HOUSE_JAM, ...company.catalog].forEach(game => {
+  [HOUSE_GAME, HOUSE_DOKU, HOUSE_BUBBLE, HOUSE_DECK, HOUSE_POKER, HOUSE_RUNNER, HOUSE_MATCH, HOUSE_JAM, HOUSE_MOB, HOUSE_FARM, ...company.catalog].forEach(game => {
     html += `
       <article class="order">
         ${strip(fileColors(game.file))}
@@ -2024,6 +2340,8 @@ function gameById(id) {
   if (id === "houserunner") return HOUSE_RUNNER;
   if (id === "housematch") return HOUSE_MATCH;
   if (id === "housejam") return HOUSE_JAM;
+  if (id === "housemob") return HOUSE_MOB;
+  if (id === "housefarm") return HOUSE_FARM;
   return company.catalog.find(game => game.id === id);
 }
 
@@ -2032,6 +2350,8 @@ function fileColors(file) {
   if (file.product === "bubble") return file.bubbles.map(b => b.color);
   if (file.product === "match") return file.candies.map(p => p.color);
   if (file.product === "jam") return file.kinds.map(p => p.color);
+  if (file.product === "mob") return file.jobs.map(p => p.color);
+  if (file.product === "farm") return file.crops.map(p => p.color);
   if (file.product === "runner") return [file.goodGate, file.badGate, file.road, file.ground, file.sky];
   if (file.product === "cards") return file.suits.map(suit => suit.color).concat(["#2463b0"]);
   return file.pieces.slice(0, 7).map(piece => piece.color);
@@ -2549,6 +2869,8 @@ function openPlay(file, context) {
   else if (file.product === "runner") openRunner(file, context);
   else if (file.product === "match") openMatch(file, context);
   else if (file.product === "jam") openJam(file, context);
+  else if (file.product === "mob") openMob(file, context);
+  else if (file.product === "farm") openFarm(file, context);
   else openBlocks(file, context);
 }
 
@@ -2602,6 +2924,12 @@ function finishPlayTest(orderId) {
     } else if (isBubble(order)) {
       const bubbleName = BUBBLE_THEMES[order.theme].names[order.bug.pieceIndex];
       notify("Play test found a bug. The " + bubbleName + " bubble had gone grey with a question mark on it. Fixed before shipping.", true);
+    } else if (isMob(order)) {
+      const jobName = MOB_THEMES[order.theme].names[order.bug.pieceIndex];
+      notify("Play test found a bug. The " + jobName.toLowerCase() + " job had gone grey with a question mark on it. Fixed before shipping.", true);
+    } else if (isFarm(order)) {
+      const cropName = FARM_THEMES[order.theme].names[order.bug.pieceIndex];
+      notify("Play test found a bug. The " + cropName + " crop had gone grey with a question mark on it. Fixed before shipping.", true);
     } else if (isJam(order)) {
       const jamName = JAM_THEMES[order.theme].names[order.bug.pieceIndex];
       notify("Play test found a bug. The " + jamName + " piece had gone grey with a question mark on it. Fixed before shipping.", true);
@@ -4724,6 +5052,506 @@ function closeJam() {
 }
 document.getElementById("jamClose").addEventListener("click", closeJam);
 window.addEventListener("resize", jamResize);
+
+// ------------------------------------------------------------------
+// THE MOB ENGINE
+// Reads a mob skin file and becomes that energy and jobs game. Energy
+// buys jobs, stamina buys fights, cash buys gear, and the invite button
+// grows the crew by pestering everyone the player has ever met.
+// ------------------------------------------------------------------
+const MOB_JOB_ENERGY = [1, 2, 4, 6, 9, 13];
+const MOB_GEAR_POW = [2, 5, 12, 25];
+const MOB_GEAR_COST = [60, 300, 1200, 5000];
+const MOB_RIVAL_POW = [3, 8, 16, 30];
+const MOB_INVITE_LINES = [
+  "You invited everyone you went to high school with.",
+  "Your aunt joined. She does not know what this game is.",
+  "Spammed the whole contact list. Two people blocked you. One joined.",
+  "A coworker joined just to make the notifications stop.",
+  "Your ex joined. That is going to be weird.",
+  "Somebody's mom joined and immediately asked for energy."
+];
+const MOB_POINTS_LINES = [
+  "This studio does not take real money. The customer wanted the button anyway.",
+  "The button is decorative. Legal made us.",
+  "Nothing happened. That is the premium experience.",
+  "Points are coming soon. They have been coming soon since launch."
+];
+
+const mobRoot = document.getElementById("mob");
+const mobList = document.getElementById("mobList");
+const mobOverlay = document.getElementById("mobOverlay");
+const mobStatusEl = document.getElementById("mobStatus");
+
+let mobOpen = false;
+let mb = null;
+let mobTimer = null;
+
+function mobStatus(text, kind) {
+  mobStatusEl.textContent = text || "";
+  mobStatusEl.className = "doku-status" + (kind ? " " + kind : "");
+}
+function mobShowOverlay(title, text, label) {
+  document.getElementById("mobOverlayTitle").textContent = title;
+  document.getElementById("mobOverlayText").textContent = text;
+  document.getElementById("mobOverlayButton").textContent = label;
+  mobOverlay.hidden = false;
+}
+function mobRank() {
+  const f = mb.file;
+  return f.ranks[Math.min(f.ranks.length - 1, Math.floor((mb.level - 1) * f.ranks.length / f.goal))];
+}
+function mobXpNext() { return 8 + mb.level * 6; }
+function mobEnergyMax() { return 10 + mb.level * 2; }
+function mobStaminaMax() { return 5 + mb.level; }
+function mobAttack() { return mb.level + mb.crew * 2 + mb.gear.reduce((sum, n, i) => sum + n * MOB_GEAR_POW[i], 0); }
+function mobJobUnlock(i) { return Math.max(1, Math.round(1 + i * (mb.file.goal - 1) / 6)); }
+function mobGearCost(i) { return Math.round(MOB_GEAR_COST[i] * Math.pow(1.15, mb.gear[i])); }
+function mobRivalPow(j) { return Math.round(MOB_RIVAL_POW[j] * (1 + (mb.level - 1) * 0.35)); }
+function mobHealCost() { return mb.level * 20; }
+
+function mobRenderList() {
+  const f = mb.file;
+  let html = `<div class="mob-sec">Jobs</div>`;
+  f.jobs.forEach((job, i) => {
+    const lock = mb.level < mobJobUnlock(i);
+    html += `<div class="mob-row">
+      <div class="mob-glyph" style="background:${job.color}">${job.glyph}</div>
+      <div class="mob-txt"><div class="mob-name">${job.name}</div>
+      <div class="quiet">${lock ? "Unlocks at level " + mobJobUnlock(i) : MOB_JOB_ENERGY[i] + " energy for cash and XP"}</div></div>
+      <button class="btn mob-go" data-act="job" data-i="${i}">${lock ? "Locked" : "Do it"}</button></div>`;
+  });
+  html += `<div class="mob-sec">Fights</div>`;
+  f.rivals.forEach((rival, j) => {
+    html += `<div class="mob-row">
+      <div class="mob-glyph" style="background:#e6ecf5">${rival.glyph}</div>
+      <div class="mob-txt"><div class="mob-name">${rival.name}</div>
+      <div class="quiet">Strength ${mobRivalPow(j)}, costs one stamina</div></div>
+      <button class="btn mob-go" data-act="fight" data-i="${j}">Fight</button></div>`;
+  });
+  html += `<div class="mob-sec">Shop</div>`;
+  f.gear.forEach((item, i) => {
+    html += `<div class="mob-row">
+      <div class="mob-glyph" style="background:#eef4fb">${item.glyph}</div>
+      <div class="mob-txt"><div class="mob-name">${item.name}${mb.gear[i] ? " x" + mb.gear[i] : ""}</div>
+      <div class="quiet">Attack plus ${MOB_GEAR_POW[i]} for $${mobGearCost(i)}</div></div>
+      <button class="btn mob-go" data-act="buy" data-i="${i}">Buy</button></div>`;
+  });
+  html += `<div class="mob-row">
+      <div class="mob-glyph" style="background:#fbe1dc">🩹</div>
+      <div class="mob-txt"><div class="mob-name">Patch up</div>
+      <div class="quiet">Full health for $${mobHealCost()}</div></div>
+      <button class="btn mob-go" data-act="heal" data-i="0">Heal</button></div>`;
+  mobList.innerHTML = html;
+  mobRefresh();
+}
+
+function mobBar(id, value, max) {
+  const el = document.getElementById(id);
+  el.querySelector("i").style.width = Math.max(0, Math.min(100, value / max * 100)) + "%";
+  el.querySelector("span").textContent = el.dataset.name + " " + Math.floor(value) + " of " + max;
+}
+
+function mobRefresh() {
+  if (!mb) return;
+  mobBar("mobEnergy", mb.energy, mobEnergyMax());
+  mobBar("mobStamina", mb.stamina, mobStaminaMax());
+  mobBar("mobHealth", mb.health, 100);
+  mobBar("mobXp", mb.xp, mobXpNext());
+  document.getElementById("mobFacts").textContent = mobRank() + ", " + mb.file.crew + " of " + mb.crew + ", attack " + mobAttack();
+  document.getElementById("mobCash").textContent = "$" + mb.cash;
+  document.getElementById("mobLevel").textContent = mb.level;
+  const playing = mb.state === "playing";
+  mobList.querySelectorAll("button[data-act]").forEach(b => {
+    const i = Number(b.dataset.i), act = b.dataset.act;
+    let ok = playing;
+    if (act === "job") ok = ok && mb.level >= mobJobUnlock(i) && mb.energy >= MOB_JOB_ENERGY[i];
+    if (act === "fight") ok = ok && mb.stamina >= 1 && mb.health >= 20;
+    if (act === "buy") ok = ok && mb.cash >= mobGearCost(i);
+    if (act === "heal") ok = ok && mb.health < 100 && mb.cash >= mobHealCost();
+    b.classList.toggle("dim", !ok);
+  });
+  const inv = document.getElementById("mobInvite");
+  inv.classList.toggle("dim", mb.inviteCd > 0);
+  inv.textContent = mb.inviteCd > 0 ? "Invite friends " + Math.ceil(mb.inviteCd) : "Invite friends";
+}
+
+function mobGain(cash, xp) {
+  mb.cash += cash;
+  mb.xp += xp;
+  let leveled = false;
+  while (mb.xp >= mobXpNext()) {
+    mb.xp -= mobXpNext();
+    mb.level++;
+    leveled = true;
+  }
+  if (leveled) {
+    mb.energy = mobEnergyMax();
+    mb.stamina = mobStaminaMax();
+    mb.health = 100;
+    if (mb.level >= mb.file.goal) {
+      mb.state = "won";
+      mobShowOverlay("Top of the heap", "You made " + mobRank() + " with a " + mb.file.crew + " of " + mb.crew + " and $" + mb.cash + ".", "Play again");
+    } else mobStatus("Level up. You are now " + mobRank() + ". Energy and stamina refilled.", "good");
+    mobRenderList();
+    return true;
+  }
+  return false;
+}
+
+function mobAct(act, i) {
+  if (!mb || mb.state !== "playing") return;
+  const f = mb.file;
+  if (act === "job") {
+    if (mb.level < mobJobUnlock(i)) { mobStatus("That job unlocks at level " + mobJobUnlock(i) + ".", "warn"); return; }
+    const cost = MOB_JOB_ENERGY[i];
+    if (mb.energy < cost) { mobStatus("Out of energy. Wait for it, or ask friends for energy like a bum.", "warn"); return; }
+    mb.energy -= cost;
+    const cash = Math.round(cost * (12 + mb.level * 3) * (0.8 + Math.random() * 0.4));
+    if (!mobGain(cash, cost + i)) mobStatus(f.jobs[i].name + ". Made $" + cash + ".", "");
+  } else if (act === "fight") {
+    if (mb.health < 20) { mobStatus("Too beat up to fight. Patch up in the shop.", "warn"); return; }
+    if (mb.stamina < 1) { mobStatus("Out of stamina.", "warn"); return; }
+    mb.stamina -= 1;
+    const pow = mobRivalPow(i);
+    const rival = f.rivals[i].name;
+    if (mobAttack() * (0.6 + Math.random() * 0.8) > pow) {
+      const cash = Math.round(pow * 8 * (0.8 + Math.random() * 0.4));
+      if (!mobGain(cash, 2 + i * 2)) mobStatus("Beat " + rival + " and took $" + cash + ".", "good");
+    } else {
+      mb.health = Math.max(0, mb.health - (12 + i * 6));
+      mobStatus(rival + " beat you up. Get more " + f.crew + " or better gear.", "warn");
+    }
+  } else if (act === "buy") {
+    const cost = mobGearCost(i);
+    if (mb.cash < cost) { mobStatus("Not enough cash for that.", "warn"); return; }
+    mb.cash -= cost;
+    mb.gear[i]++;
+    mobStatus("Bought " + f.gear[i].name.toLowerCase() + ". Attack is now " + mobAttack() + ".", "good");
+    mobRenderList();
+    return;
+  } else if (act === "heal") {
+    if (mb.health >= 100) return;
+    if (mb.cash < mobHealCost()) { mobStatus("Not enough cash to patch up.", "warn"); return; }
+    mb.cash -= mobHealCost();
+    mb.health = 100;
+    mobStatus("Patched up and ready to get hit again.", "good");
+  }
+  mobRefresh();
+}
+
+function mobTick() {
+  if (!mobOpen || !mb) return;
+  const now = performance.now();
+  const dt = Math.min(0.5, (now - mb.last) / 1000);
+  mb.last = now;
+  if (mb.state === "playing") {
+    if (mb.energy < mobEnergyMax()) mb.energy = Math.min(mobEnergyMax(), mb.energy + dt / mb.file.regen);
+    if (mb.stamina < mobStaminaMax()) mb.stamina = Math.min(mobStaminaMax(), mb.stamina + dt / 4);
+    if (mb.health < 100) mb.health = Math.min(100, mb.health + dt * 1.5);
+    if (mb.inviteCd > 0) mb.inviteCd = Math.max(0, mb.inviteCd - dt);
+  }
+  mobRefresh();
+}
+
+function mobStart() {
+  mb.level = 1; mb.xp = 0; mb.cash = 50; mb.crew = 1; mb.gear = [0, 0, 0, 0]; mb.inviteCd = 0;
+  mb.energy = mobEnergyMax(); mb.stamina = mobStaminaMax(); mb.health = 100;
+  mb.state = "playing";
+  mb.last = performance.now();
+  mobOverlay.hidden = true;
+  mobStatus("Do jobs with energy. Fight with stamina. Invite everyone you know.", "");
+  mobRenderList();
+}
+
+mobList.addEventListener("click", e => {
+  const b = e.target.closest("button[data-act]");
+  if (b) mobAct(b.dataset.act, Number(b.dataset.i));
+});
+document.getElementById("mobInvite").addEventListener("click", () => {
+  if (!mb || mb.state !== "playing" || mb.inviteCd > 0) return;
+  mb.crew++;
+  mb.inviteCd = 4;
+  mobStatus(pick(MOB_INVITE_LINES) + " Your " + mb.file.crew + " is " + mb.crew + " strong.", "good");
+  mobRefresh();
+});
+document.getElementById("mobPoints").addEventListener("click", () => {
+  if (!mb || mb.state !== "playing") return;
+  mobStatus(pick(MOB_POINTS_LINES), "warn");
+});
+document.getElementById("mobOverlayButton").addEventListener("click", () => { if (mb) mobStart(); });
+
+function openMob(file, context) {
+  mb = { file: file, ctx: context || {}, state: "ready", level: 1, xp: 0, cash: 50, crew: 1, gear: [0, 0, 0, 0],
+    energy: 12, stamina: 6, health: 100, inviteCd: 0, last: performance.now() };
+  mobOpen = true;
+  mobRoot.classList.toggle("premium", !!file.premium);
+  mobRoot.style.setProperty("--mob-bg", file.bg);
+  document.getElementById("mobName").textContent = file.hero + " " + file.themeName + (file.premium ? " premium" : "");
+  document.getElementById("mobFor").textContent = "For " + file.customer;
+  mobStatus("");
+  mobRenderList();
+  mobShowOverlay(file.themeName,
+    mb.ctx.orderId != null
+      ? "Play this build the way the customer will. If a job looks wrong, that is a bug."
+      : "Spend energy on jobs, stamina on fights, and pester every friend you have to join your " + file.crew + ". Climb to the top rank.",
+    "Start");
+  mobRoot.hidden = false;
+  clearInterval(mobTimer);
+  mobTimer = setInterval(mobTick, 100);
+}
+
+function closeMob() {
+  mobOpen = false;
+  clearInterval(mobTimer);
+  mobRoot.hidden = true;
+  const orderId = mb ? mb.ctx.orderId : null;
+  mb = null;
+  finishPlayTest(orderId);
+  lastTick = performance.now();
+  render();
+}
+document.getElementById("mobClose").addEventListener("click", closeMob);
+
+// ------------------------------------------------------------------
+// THE FARM ENGINE
+// Reads a farm skin file and becomes that crop timer game. Pick a seed,
+// tap a plot to plant, wait, tap to harvest. Rotting crops are optional
+// and the friends you beg for water are not.
+// ------------------------------------------------------------------
+const FARM_SEED = [5, 15, 40, 90, 200, 450];
+const FARM_GROW = [5, 10, 18, 28, 40, 55];
+const FARM_SELL = [12, 36, 95, 210, 460, 1000];
+const FARM_XP = [1, 2, 4, 7, 11, 16];
+const FARM_UNLOCK = [1, 2, 3, 4, 6, 7];
+const FARM_GOAL = 8;
+const FARM_WATER_LINES = [
+  "Your neighbor watered your crops and sent you a cow you did not ask for.",
+  "You begged everyone you know for water. Grandma replied to the post.",
+  "Three friends watered. One sent a mystery egg. It is just an egg.",
+  "A stranger watered your farm and now wants you to water theirs forever.",
+  "Your cousin watered and invited you to a different farm game."
+];
+
+const frmRoot = document.getElementById("frm");
+const frmGrid = document.getElementById("frmGrid");
+const frmSeeds = document.getElementById("frmSeeds");
+const frmOverlay = document.getElementById("frmOverlay");
+const frmStatusEl = document.getElementById("frmStatus");
+
+let frmOpen = false;
+let fm = null;
+let frmTimer = null;
+
+function frmStatus(text, kind) {
+  frmStatusEl.textContent = text || "";
+  frmStatusEl.className = "doku-status" + (kind ? " " + kind : "");
+}
+function frmShowOverlay(title, text, label) {
+  document.getElementById("frmOverlayTitle").textContent = title;
+  document.getElementById("frmOverlayText").textContent = text;
+  document.getElementById("frmOverlayButton").textContent = label;
+  frmOverlay.hidden = false;
+}
+function frmXpNext() { return 6 + fm.level * 6; }
+
+function frmBuild() {
+  const f = fm.file, n = f.size;
+  frmGrid.style.gridTemplateColumns = "repeat(" + n + ", 1fr)";
+  frmGrid.style.gridTemplateRows = "repeat(" + n + ", 1fr)";
+  frmGrid.style.setProperty("--frm-n", n);
+  let html = "";
+  for (let i = 0; i < n * n; i++) html += `<button class="frm-plot" data-i="${i}" style="background:${f.soil}"><span></span><i></i></button>`;
+  frmGrid.innerHTML = html;
+  frmSeedBar();
+}
+
+function frmSeedBar() {
+  const f = fm.file;
+  frmSeeds.innerHTML = f.crops.map((crop, i) =>
+    `<button class="frm-seed" data-i="${i}"><span class="frm-sg">${fm.level >= FARM_UNLOCK[i] ? crop.glyph : "🔒"}</span><span class="frm-sc">${fm.level >= FARM_UNLOCK[i] ? "$" + FARM_SEED[i] : "Lv " + FARM_UNLOCK[i]}</span></button>`
+  ).join("");
+  frmRefresh();
+}
+
+function frmRefresh() {
+  if (!fm) return;
+  const f = fm.file;
+  document.getElementById("frmCoins").textContent = "$" + fm.coins;
+  document.getElementById("frmLevel").textContent = fm.level;
+  document.getElementById("frmXp").querySelector("i").style.width = Math.min(100, fm.xp / frmXpNext() * 100) + "%";
+  document.getElementById("frmXp").querySelector("span").textContent = "XP " + fm.xp + " of " + frmXpNext() + ", farm done at level " + FARM_GOAL;
+  frmSeeds.querySelectorAll(".frm-seed").forEach(b => {
+    const i = Number(b.dataset.i);
+    b.classList.toggle("sel", i === fm.sel);
+    b.classList.toggle("dim", fm.level < FARM_UNLOCK[i] || fm.coins < FARM_SEED[i]);
+  });
+  frmGrid.querySelectorAll(".frm-plot").forEach(b => {
+    const p = fm.plots[Number(b.dataset.i)];
+    const span = b.firstChild, bar = b.lastChild;
+    let glyph = "", cls = "frm-plot", pct = 0;
+    if (p.crop >= 0) {
+      const crop = f.crops[p.crop];
+      const grow = FARM_GROW[p.crop];
+      const prog = Math.min(1, p.t / grow);
+      pct = prog * 100;
+      if (p.dead) { glyph = "🥀"; cls += " dead"; pct = 0; }
+      else if (prog < 0.34) { glyph = "🌱"; cls += " young"; }
+      else if (prog < 1) { glyph = crop.glyph; cls += " half"; }
+      else { glyph = crop.glyph; cls += " ripe"; pct = 0; }
+    }
+    if (span.textContent !== glyph) span.textContent = glyph;
+    if (b.className !== cls) b.className = cls;
+    bar.style.width = pct + "%";
+  });
+  const water = document.getElementById("frmWater");
+  water.classList.toggle("dim", fm.waterCd > 0);
+  water.textContent = fm.waterCd > 0 ? "Beg for water " + Math.ceil(fm.waterCd) : "Beg for water";
+}
+
+function frmGain(coins, xp) {
+  fm.coins += coins;
+  fm.xp += xp;
+  let leveled = false;
+  while (fm.xp >= frmXpNext()) { fm.xp -= frmXpNext(); fm.level++; leveled = true; }
+  if (leveled) {
+    if (fm.level >= FARM_GOAL) {
+      fm.state = "won";
+      frmShowOverlay("Farm finished", "Level " + fm.level + " with $" + fm.coins + " in the bank. Your friends are relieved.", "Play again");
+    } else {
+      const newCrop = FARM_UNLOCK.indexOf(fm.level);
+      frmStatus("Level " + fm.level + "." + (newCrop >= 0 ? " New seed: " + fm.file.crops[newCrop].name + "." : ""), "good");
+    }
+    frmSeedBar();
+  }
+  return leveled;
+}
+
+function frmHarvest(p) {
+  const crop = fm.file.crops[p.crop];
+  const coins = FARM_SELL[p.crop], xp = FARM_XP[p.crop];
+  p.crop = -1; p.t = 0; p.dead = false;
+  return { coins, xp, name: crop.name };
+}
+
+function frmTapPlot(i) {
+  if (!fm || fm.state !== "playing") return;
+  const p = fm.plots[i];
+  const f = fm.file;
+  if (p.crop < 0) {
+    const s = fm.sel;
+    if (fm.level < FARM_UNLOCK[s]) { frmStatus("That seed unlocks at level " + FARM_UNLOCK[s] + ".", "warn"); return; }
+    if (fm.coins < FARM_SEED[s]) { frmStatus("Not enough coins for " + f.crops[s].name + " seeds.", "warn"); return; }
+    fm.coins -= FARM_SEED[s];
+    p.crop = s; p.t = 0; p.dead = false;
+    frmStatus("Planted " + f.crops[s].name + ". Ready in " + FARM_GROW[s] + " seconds.", "");
+  } else if (p.dead) {
+    p.crop = -1; p.t = 0; p.dead = false;
+    frmStatus("Cleared the rotten plot. Shame.", "warn");
+  } else if (p.t >= FARM_GROW[p.crop]) {
+    const got = frmHarvest(p);
+    if (!frmGain(got.coins, got.xp)) frmStatus("Harvested " + got.name + " for $" + got.coins + ".", "good");
+  } else {
+    frmStatus(f.crops[p.crop].name + " ready in " + Math.ceil(FARM_GROW[p.crop] - p.t) + " seconds.", "");
+  }
+  frmRefresh();
+}
+
+function frmTick() {
+  if (!frmOpen || !fm) return;
+  const now = performance.now();
+  const dt = Math.min(0.5, (now - fm.last) / 1000);
+  fm.last = now;
+  if (fm.state === "playing") {
+    fm.plots.forEach(p => {
+      if (p.crop < 0 || p.dead) return;
+      p.t += dt;
+      if (fm.file.rot && p.t > FARM_GROW[p.crop] * 3) { p.dead = true; frmStatus("A " + fm.file.crops[p.crop].name + " rotted. Should have logged in.", "warn"); }
+    });
+    if (fm.waterCd > 0) fm.waterCd = Math.max(0, fm.waterCd - dt);
+    const broke = fm.coins < FARM_SEED[0] && fm.plots.every(p => p.crop < 0 || p.dead);
+    if (broke) {
+      fm.state = "lost";
+      frmShowOverlay("Foreclosed", "Out of coins with nothing growing. The bank took the farm.", "Play again");
+    }
+  }
+  frmRefresh();
+}
+
+function frmStart() {
+  const n = fm.file.size;
+  fm.level = 1; fm.xp = 0; fm.coins = 40; fm.sel = 0; fm.waterCd = 0;
+  fm.plots = [];
+  for (let i = 0; i < n * n; i++) fm.plots.push({ crop: -1, t: 0, dead: false });
+  fm.state = "playing";
+  fm.last = performance.now();
+  frmOverlay.hidden = true;
+  frmStatus("Pick a seed, tap a plot to plant, tap it again when it is ripe.", "");
+  frmBuild();
+}
+
+frmGrid.addEventListener("click", e => {
+  const b = e.target.closest(".frm-plot");
+  if (b) frmTapPlot(Number(b.dataset.i));
+});
+frmSeeds.addEventListener("click", e => {
+  const b = e.target.closest(".frm-seed");
+  if (!b || !fm) return;
+  const i = Number(b.dataset.i);
+  if (fm.level < FARM_UNLOCK[i]) { frmStatus("That seed unlocks at level " + FARM_UNLOCK[i] + ".", "warn"); return; }
+  fm.sel = i;
+  frmRefresh();
+});
+document.getElementById("frmWater").addEventListener("click", () => {
+  if (!fm || fm.state !== "playing" || fm.waterCd > 0) return;
+  fm.waterCd = 12;
+  fm.plots.forEach(p => { if (p.crop >= 0 && !p.dead) p.t = Math.min(FARM_GROW[p.crop], p.t + FARM_GROW[p.crop] * 0.3); });
+  frmStatus(pick(FARM_WATER_LINES), "good");
+  frmRefresh();
+});
+document.getElementById("frmHarvestAll").addEventListener("click", () => {
+  if (!fm || fm.state !== "playing") return;
+  let coins = 0, xp = 0, count = 0;
+  fm.plots.forEach(p => {
+    if (p.crop >= 0 && !p.dead && p.t >= FARM_GROW[p.crop]) { const got = frmHarvest(p); coins += got.coins; xp += got.xp; count++; }
+  });
+  if (!count) { frmStatus("Nothing is ripe yet.", ""); return; }
+  if (!frmGain(coins, xp)) frmStatus("Harvested " + count + " " + plural(count, "plot") + " for $" + coins + ".", "good");
+  frmRefresh();
+});
+document.getElementById("frmOverlayButton").addEventListener("click", () => { if (fm) frmStart(); });
+
+function openFarm(file, context) {
+  fm = { file: file, ctx: context || {}, state: "ready", level: 1, xp: 0, coins: 40, sel: 0, waterCd: 0, plots: [], last: performance.now() };
+  for (let i = 0; i < file.size * file.size; i++) fm.plots.push({ crop: -1, t: 0, dead: false });
+  frmOpen = true;
+  frmRoot.classList.toggle("premium", !!file.premium);
+  frmRoot.style.setProperty("--frm-bg", file.bg);
+  document.getElementById("frmName").textContent = file.themeName + (file.premium ? " premium" : "");
+  document.getElementById("frmFor").textContent = "For " + file.customer;
+  frmStatus("");
+  frmBuild();
+  frmShowOverlay(file.themeName,
+    fm.ctx.orderId != null
+      ? "Play this build the way the customer will. If a crop looks wrong, that is a bug."
+      : "Plant, wait, harvest, and beg your friends for water. Reach level " + FARM_GOAL + (file.rot ? " before everything rots." : "."),
+    "Start");
+  frmRoot.hidden = false;
+  clearInterval(frmTimer);
+  frmTimer = setInterval(frmTick, 100);
+}
+
+function closeFarm() {
+  frmOpen = false;
+  clearInterval(frmTimer);
+  frmRoot.hidden = true;
+  const orderId = fm ? fm.ctx.orderId : null;
+  fm = null;
+  finishPlayTest(orderId);
+  lastTick = performance.now();
+  render();
+}
+document.getElementById("frmClose").addEventListener("click", closeFarm);
 
 // ------------------------------------------------------------------
 // THE DECK ENGINE
