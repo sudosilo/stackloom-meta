@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.10. Added raises and a carrot or stick management style.
+Latest change. 2026-11-20, v2026.11.20.11. Added perks, meter tick marks, manager house rules, and gated raises behind the shared studio.
 
 Full history is in CHANGELOG.md.
