@@ -692,7 +692,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3.5";
+const VERSION = "stackloom-meta v3.6";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -1235,7 +1235,9 @@ const SHOOT_BOMBS = {
 const DAY_SECONDS = 45;
 const SAVE_KEY = "stackloom-company-1";
 
-const PRICES = { agent: 500, agentSalary: 60, dev: 1500, devSalary: 150, terminalUpkeep: 10, sec: 1200, secSalary: 120 };
+const PRICES = { agent: 500, agentSalary: 60, dev: 1500, devSalary: 150, terminalUpkeep: 10, sec: 1200, secSalary: 120, law: 1500, lawSalary: 140 };
+const LAW_SEATS = [1, 1, 2, 3];
+const LAW_NAMES = ["Sutton", "Okafor", "Bramble"];
 const SEC_SEATS = [1, 1, 2, 4];
 const SEC_NAMES = ["Vex", "Hollis", "Quill", "Dara"];
 
@@ -1456,7 +1458,25 @@ function lineFrozen(line) {
 }
 function secCount() { return (company.secs || []).length; }
 function cveLiability(v) { return Math.round((30 + company.day * 2) * Math.max(0.25, 1 - 0.25 * secCount())); }
-function cveFine() { return 200 + company.day * 6; }
+function lawCount() { return (company.laws || []).length; }
+function lawCut() { return Math.max(0.25, 1 - 0.3 * lawCount()); }
+function cveFine() { return Math.round((200 + company.day * 6) * lawCut()); }
+
+// Lawyers with nothing to defend send cease and desist letters to rivals,
+// and now and then a settlement check comes back.
+function runLawyers() {
+  const c = company;
+  c.heat = Math.max(0, (c.heat || 0) - 3 * lawCount());
+  const busy = (c.cves || []).length > 0;
+  if (busy) return;
+  (c.laws || []).forEach(name => {
+    if (Math.random() >= 0.15) return;
+    const rival = pick(RIVALS);
+    const take = 200 + c.day * 10;
+    c.money += take;
+    notify("Lawyer " + name + " squeezed a " + cash(take) + " settlement out of " + rival.name + " over a lookalike game.", true);
+  });
+}
 
 function allFrozen() {
   return lineFrozen("blocks") && SENIORS.filter(x => x.line !== "art" && lineOpen(x.line)).every(x => lineFrozen(x.line));
@@ -1595,11 +1615,11 @@ function heatCheck(add) {
   const c = company;
   c.heat = clamp((c.heat || 0) + add, 0, 90);
   if (Math.random() * 100 >= c.heat) return false;
-  const fine = 500 + c.day * 20;
+  const fine = Math.round((500 + c.day * 20) * lawCut());
   c.money -= fine;
-  c.reputation = clamp(c.reputation - 12, 0, 100);
+  c.reputation = clamp(c.reputation - Math.round(12 * lawCut()), 0, 100);
   c.heat = Math.round(c.heat / 2);
-  notify("Caught. A reporter traced the leak back to your studio. Lawyers cost " + cash(fine) + " and your reputation took a beating.", true);
+  notify("Caught. A reporter traced the leak back to your studio. " + (lawCount() ? "Your lawyers knocked it down, but it still cost " : "Outside lawyers cost ") + cash(fine) + " and your reputation took a beating.", true);
   return true;
 }
 
@@ -1743,7 +1763,7 @@ function newCompany() {
     terminals: [{ job: null }], agents: [], devs: [], seniors: {}, upgrades: {},
     orders: [], catalog: [], nextId: 1, offerTimer: 2,
     shipped: 0, bugsShipped: 0, log: [],
-    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: [], secs: [], intel: 0, exploits: [], heat: 0
+    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: [], secs: [], intel: 0, exploits: [], heat: 0, laws: []
   };
 }
 
@@ -2525,12 +2545,13 @@ function payBills() {
   const c = company;
   const seniorPay = SENIORS.filter(x => c.seniors[x.key]).reduce((sum, x) => sum + x.salary, 0);
   const bills = (office().rent + c.terminals.length * PRICES.terminalUpkeep) * eventMod("bills");
-  const salaries = (c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + (c.secs || []).length * PRICES.secSalary + seniorPay) * eventMod("salaries");
+  const salaries = (c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + (c.secs || []).length * PRICES.secSalary + (c.laws || []).length * PRICES.lawSalary + seniorPay) * eventMod("salaries");
   const bill = Math.round(bills + salaries);
   c.money -= bill;
   notify("Day " + (c.day - 1) + " ended. Rent, salaries, and upkeep cost " + cash(bill) + ".");
   checkCves();
   c.heat = Math.max(0, (c.heat || 0) - 5);
+  runLawyers();
   checkDebt();
   if (!c.over) { checkMarket(); maybeCve(); }
 }
@@ -2814,6 +2835,23 @@ function renderTeam() {
   else html += `<button class="btn primary wide" data-do="hireSec">Hire a security engineer for ${cash(PRICES.sec)}</button>`;
   html += `<p class="quiet">${secs.length} of ${secSeats} security ${plural(secSeats, "seat")} used.</p></div>`;
 
+  html += `<h2 class="section-title spaced">Lawyers</h2>
+    <p class="note">Lawyers shrink every fine and legal bill, soften the reputation hit when the studio gets caught, and cool off heat faster each night. When there is no vulnerability open, they send cease and desist letters to rivals and sometimes a settlement check comes back.</p>`;
+  const laws = c.laws || [];
+  if (!laws.length) html += `<p class="empty">No lawyers yet. Fines land at full price.</p>`;
+  laws.forEach(name => {
+    html += `
+      <div class="row">
+        <div class="row-top"><div class="row-name">Lawyer ${name}</div><div class="row-state">${cash(PRICES.lawSalary)} a day</div></div>
+        <div class="row-sub">${(c.cves || []).length ? "Handling the vulnerability fallout" : "Mailing cease and desist letters to rivals"}</div>
+      </div>`;
+  });
+  const lawSeats = LAW_SEATS[c.officeLevel];
+  html += `<div class="buy">`;
+  if (laws.length >= lawSeats) html += `<button class="btn wide" disabled>No free lawyer seats. Move to a bigger office.</button>`;
+  else html += `<button class="btn primary wide" data-do="hireLaw">Hire a lawyer for ${cash(PRICES.law)}</button>`;
+  html += `<p class="quiet">${laws.length} of ${lawSeats} lawyer ${plural(lawSeats, "seat")} used. Fines are cut to ${Math.round(lawCut() * 100)} percent.</p></div>`;
+
   html += `<h2 class="section-title spaced">Senior hires</h2>
     <p class="note">Experienced developers cost a lot more and each one needs the one before them on staff. Every senior hire opens a new product line for the studio.</p>`;
   SENIORS.forEach(x => {
@@ -3052,6 +3090,15 @@ function doAction(action, id) {
       useExploit(choice, xid);
       break;
     }
+    case "hireLaw":
+      if (!c.laws) c.laws = [];
+      if (c.laws.length >= LAW_SEATS[c.officeLevel]) showToast("No free lawyer seats. Move to a bigger office.");
+      else if (spend(PRICES.law)) {
+        const name = LAW_NAMES[c.laws.length % LAW_NAMES.length];
+        c.laws.push(name);
+        notify("Hired Lawyer " + name + ".", true);
+      }
+      break;
     case "hireSec":
       if (!c.secs) c.secs = [];
       if (c.secs.length >= SEC_SEATS[c.officeLevel]) showToast("No free security seats. Move to a bigger office.");
