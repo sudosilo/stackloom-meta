@@ -416,7 +416,7 @@
     <p>Customers show up on the Orders tab wanting a themed game. Accept one, put it on a terminal, and the terminal builds it. When it is done you can play test it, then ship it and get paid. Late or buggy games pay less and cost reputation, and reputation brings in more customers.</p>
 
     <h2>Staff</h2>
-    <p>Agents run terminals for you, accepting orders, building, and shipping, but they never play test. Devs supervise agents so builds go faster with fewer bugs. Everybody gets paid every night whether they did anything or not.</p>
+    <p>Agents run terminals for you, accepting orders, building, and shipping, but they never play test. Devs supervise agents so builds go faster with fewer bugs. Game testers play every finished build, fix most bugs, and ship it for you, and managers make their testers faster and sharper. Everybody gets paid every night whether they did anything or not.</p>
 
     <h2>Product lines</h2>
     <p>Senior hires open new product lines, each one a new engine with a pile of skins: sudoku, bubble shooters, card games, lane runners, match three, pull out puzzles, energy and jobs games, crop timers, and vertical shooters. The Games tab keeps a sample of each so you can play what you are selling.</p>
@@ -751,7 +751,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3.8";
+const VERSION = "stackloom-meta v3.9";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -1294,7 +1294,12 @@ const SHOOT_BOMBS = {
 const DAY_SECONDS = 45;
 const SAVE_KEY = "stackloom-company-1";
 
-const PRICES = { agent: 500, agentSalary: 60, dev: 1500, devSalary: 150, terminalUpkeep: 10, sec: 1200, secSalary: 120, law: 1500, lawSalary: 140 };
+const PRICES = { agent: 500, agentSalary: 60, dev: 1500, devSalary: 150, terminalUpkeep: 10, sec: 1200, secSalary: 120, law: 1500, lawSalary: 140, qa: 700, qaSalary: 70, mgr: 1800, mgrSalary: 170 };
+const QA_SEATS = [1, 2, 4, 6];
+const MGR_SEATS = [0, 1, 1, 2];
+const QA_NAMES = ["Pixel", "Dusty", "Moxie", "Tibs", "Gigi", "Bo"];
+const MGR_NAMES = ["Carol", "Dennis"];
+const QA_SECONDS = 6;
 const LAW_SEATS = [1, 1, 2, 3];
 const LAW_NAMES = ["Sutton", "Okafor", "Bramble"];
 const SEC_SEATS = [1, 1, 2, 4];
@@ -1822,7 +1827,7 @@ function newCompany() {
     terminals: [{ job: null }], agents: [], devs: [], seniors: {}, upgrades: {},
     orders: [], catalog: [], nextId: 1, offerTimer: 2,
     shipped: 0, bugsShipped: 0, log: [],
-    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: [], secs: [], intel: 0, exploits: [], heat: 0, laws: []
+    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: [], secs: [], intel: 0, exploits: [], heat: 0, laws: [], qas: [], mgrs: []
   };
 }
 
@@ -2561,13 +2566,45 @@ function shipOrder(order) {
   });
   if (c.catalog.length > 30) c.catalog.length = 30;
   order.status = "shipped";
-  notify(message, !isManaged(order.builtBy) || !!order.bug);
+  notify(message, (!isManaged(order.builtBy) && !order.qa) || !!order.bug);
 }
 
 function cleanup() {
   const before = company.orders.length;
   company.orders = company.orders.filter(o => o.status !== "gone" && o.status !== "shipped");
   if (company.orders.length !== before) dirty = true;
+}
+
+// ------------------------------------------------------------------
+// Game testers play every finished build, fix most bugs, and ship it so
+// nobody has to tap Ship. Managers each run up to three testers, and
+// managed testers work twice as fast and catch nearly every bug.
+// ------------------------------------------------------------------
+function qaManaged(t) { return t < (company.mgrs || []).length * 3; }
+function qaManagerFor(t) { return (company.mgrs || [])[Math.floor(t / 3)]; }
+
+function runQA(dt) {
+  const c = company;
+  (c.qas || []).forEach((name, t) => {
+    let order = c.orders.find(o => o.status === "ready" && o.qa === name);
+    if (!order) {
+      order = c.orders.find(o => o.status === "ready" && !o.qa && !o.patch);
+      if (!order) return;
+      order.qa = name;
+      order.qaT = 0;
+      dirty = true;
+    }
+    const managed = qaManaged(t);
+    order.qaT += dt * (managed ? 2 : 1);
+    if (order.qaT < QA_SECONDS) return;
+    if (order.bug && Math.random() < (managed ? 0.95 : 0.75)) {
+      order.bug = null;
+      notify("Tester " + name + " caught a bug in the " + lookFor(order).label + " game for " + order.customer + " and got it fixed.");
+    }
+    order.tested = true;
+    shipOrder(order);
+    dirty = true;
+  });
 }
 
 // ------------------------------------------------------------------
@@ -2591,7 +2628,7 @@ function runAgents() {
   }
 
   c.orders.forEach(order => {
-    if (order.status !== "ready" || !isManaged(order.builtBy) || c.time - order.readyAt < 8) return;
+    if (order.status !== "ready" || order.qa || !isManaged(order.builtBy) || c.time - order.readyAt < 8) return;
     if (order.bug && isBoosted(order.builtBy) && Math.random() < 0.5) {
       order.bug = null;
       notify("Dev " + devFor(order.builtBy) + " reviewed the " + lookFor(order).label + " game and fixed a bug before it shipped.");
@@ -2604,7 +2641,7 @@ function payBills() {
   const c = company;
   const seniorPay = SENIORS.filter(x => c.seniors[x.key]).reduce((sum, x) => sum + x.salary, 0);
   const bills = (office().rent + c.terminals.length * PRICES.terminalUpkeep) * eventMod("bills");
-  const salaries = (c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + (c.secs || []).length * PRICES.secSalary + (c.laws || []).length * PRICES.lawSalary + seniorPay) * eventMod("salaries");
+  const salaries = (c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + (c.secs || []).length * PRICES.secSalary + (c.laws || []).length * PRICES.lawSalary + (c.qas || []).length * PRICES.qaSalary + (c.mgrs || []).length * PRICES.mgrSalary + seniorPay) * eventMod("salaries");
   const bill = Math.round(bills + salaries);
   c.money -= bill;
   notify("Day " + (c.day - 1) + " ended. Rent, salaries, and upkeep cost " + cash(bill) + ".");
@@ -2662,6 +2699,7 @@ function simulate(dt) {
     if (order.progress >= order.work) finishBuild(order, i);
   });
 
+  runQA(dt);
   runAgents();
   runSecurity(dt);
   cleanup();
@@ -2761,7 +2799,8 @@ function renderOrders() {
         : (!order.patch && lineFrozen(order.line) ? "Code freeze. Paused on Terminal " : "Building on Terminal ") + (order.terminal + 1);
       bar = `<div class="bar"><i data-progress="${order.id}"></i></div>`;
     } else if (order.status === "ready") {
-      if (isManaged(order.builtBy)) status = "Built. Agent " + agentFor(order.builtBy) + " ships it in a few seconds.";
+      if (order.qa) status = "Tester " + order.qa + " is play testing it, then it ships";
+      else if (isManaged(order.builtBy)) status = "Built. Agent " + agentFor(order.builtBy) + " ships it in a few seconds.";
       else status = order.tested ? "Built and play tested" : "Built, not play tested yet";
       bar = `<div class="bar"><i data-progress="${order.id}"></i></div>`;
       buttons = `
@@ -2848,6 +2887,10 @@ function floorPods() {
       people: (c.secs || []).map(n => ({ name: "Security engineer " + n, busy: true })) },
     { name: "Legal pod", kind: "law", color: "#55606e", seats: LAW_SEATS[L],
       people: (c.laws || []).map(n => ({ name: "Lawyer " + n, busy: (c.cves || []).length > 0 })) },
+    { name: "QA pod", kind: "qa", color: "#3f9a3a", seats: QA_SEATS[L],
+      people: (c.qas || []).map(n => ({ name: "Tester " + n, busy: c.orders.some(o => o.status === "ready" && o.qa === n) })) },
+    { name: "Manager pod", kind: "mgr", color: "#b07a12", seats: MGR_SEATS[L], locked: MGR_SEATS[L] === 0 ? OFFICES[MGR_SEATS.findIndex(n => n > 0)].name.toLowerCase() : "",
+      people: (c.mgrs || []).map(n => ({ name: "Manager " + n, busy: (c.qas || []).length > 0 })) },
     { name: "Design pod", kind: "design", color: "#e8862e", seats: Math.max(seniorsHere.length, hiredSeniors.length), wide: true,
       locked: !seniorsHere.length && !hiredSeniors.length ? OFFICES[Math.min(...SENIORS.map(x => x.office))].name.toLowerCase() : "",
       people: hiredSeniors.map(x => ({ name: x.title + " " + x.name, busy: c.orders.some(o => o.status === "building" && (o.line || "blocks") === x.line) })) }
@@ -2860,12 +2903,14 @@ function floorPerson(x, y, p, kind, color) {
   let g = `<g class="${p.busy ? "typing" : "idle"}"><title>${p.name}</title>`;
   g += `<ellipse cx="${x}" cy="${y + 2}" rx="11" ry="6.5" fill="${color}" stroke="#1c2833" stroke-width="1.2"/>`;
   if (kind === "law") g += `<path d="M${x - 2} ${y - 3} L${x} ${y + 6} L${x + 2} ${y - 3}Z" fill="#d0584f"/>`;
+  if (kind === "mgr") g += `<path d="M${x - 2} ${y - 3} L${x} ${y + 6} L${x + 2} ${y - 3}Z" fill="#2463b0"/><rect x="${x + 6}" y="${y - 2}" width="6" height="8" rx="1" fill="#f6efe0" stroke="#1c2833" stroke-width="0.8"/>`;
   if (kind === "sec") {
     g += `<circle cx="${x}" cy="${y - 1}" r="7.2" fill="${color}" stroke="#1c2833" stroke-width="1.2"/>`;
     g += `<circle cx="${x}" cy="${y - 2.2}" r="4.4" fill="${skin}"/>`;
   } else {
     g += `<circle cx="${x}" cy="${y - 1}" r="5.6" fill="${skin}" stroke="#1c2833" stroke-width="1"/>`;
     g += `<path d="M${x - 5.6} ${y - 1} A5.6 5.6 0 0 1 ${x + 5.6} ${y - 1} L${x + 4} ${y + 1} L${x - 4} ${y + 1}Z" fill="${kind === "design" ? "#d0584f" : hair}"/>`;
+    if (kind === "qa") g += `<path d="M${x - 6.5} ${y} A6.5 6.5 0 0 1 ${x + 6.5} ${y}" fill="none" stroke="#1c2833" stroke-width="1.6"/><circle cx="${x - 6.5}" cy="${y}" r="1.8" fill="#2463b0"/><circle cx="${x + 6.5}" cy="${y}" r="1.8" fill="#2463b0"/>`;
   }
   return g + `</g>`;
 }
@@ -2970,6 +3015,44 @@ function renderTeam() {
   else if (c.devs.length >= room.devs) html += `<button class="btn wide" disabled>No free dev seats. Move to a bigger office.</button>`;
   else html += `<button class="btn primary wide" data-do="hireDev">Hire a dev for ${cash(PRICES.dev)}</button>`;
   html += `<p class="quiet">${c.devs.length} of ${room.devs} dev ${plural(room.devs, "seat")} used.</p></div>`;
+
+  html += `<h2 class="section-title spaced">Game testers</h2>
+    <p class="note">Testers play every finished game, fix most of the bugs they find, and ship it for you, so you never have to tap Ship. They grab games before agents ship them too, so fewer bugs reach customers.</p>`;
+  const qas = c.qas || [];
+  if (!qas.length) html += `<p class="empty">No testers yet. You ship by hand.</p>`;
+  qas.forEach((name, t) => {
+    const busy = c.orders.find(o => o.status === "ready" && o.qa === name);
+    const boss = qaManaged(t) ? ". Managed by " + qaManagerFor(t) + ", so twice as fast" : "";
+    html += `
+      <div class="row">
+        <div class="row-top"><div class="row-name">Tester ${name}</div><div class="row-state ${busy ? "busy" : ""}">${cash(PRICES.qaSalary)} a day</div></div>
+        <div class="row-sub">${busy ? "Play testing the " + lookFor(busy).label + " game for " + busy.customer : "Waiting for a finished build"}${boss}</div>
+      </div>`;
+  });
+  const qaSeats = QA_SEATS[c.officeLevel];
+  html += `<div class="buy">`;
+  if (qas.length >= qaSeats) html += `<button class="btn wide" disabled>No free tester seats. Move to a bigger office.</button>`;
+  else html += `<button class="btn primary wide" data-do="hireQa">Hire a game tester for ${cash(PRICES.qa)}</button>`;
+  html += `<p class="quiet">${qas.length} of ${qaSeats} tester ${plural(qaSeats, "seat")} used.</p></div>`;
+
+  html += `<h2 class="section-title spaced">Managers</h2>
+    <p class="note">A manager runs up to three testers. Managed testers test twice as fast and catch nearly every bug.</p>`;
+  const mgrs = c.mgrs || [];
+  if (!mgrs.length) html += `<p class="empty">No managers yet.</p>`;
+  mgrs.forEach((name, m) => {
+    const team = qas.slice(m * 3, m * 3 + 3).map(n => "Tester " + n);
+    html += `
+      <div class="row">
+        <div class="row-top"><div class="row-name">Manager ${name}</div><div class="row-state">${cash(PRICES.mgrSalary)} a day</div></div>
+        <div class="row-sub">${team.length ? "Manages " + team.join(", ") : "No testers to manage yet. Hire more testers."}</div>
+      </div>`;
+  });
+  const mgrSeats = MGR_SEATS[c.officeLevel];
+  html += `<div class="buy">`;
+  if (mgrSeats === 0) html += `<button class="btn wide" disabled>The garage has no room for a manager</button>`;
+  else if (mgrs.length >= mgrSeats) html += `<button class="btn wide" disabled>No free manager seats. Move to a bigger office.</button>`;
+  else html += `<button class="btn primary wide" data-do="hireMgr">Hire a manager for ${cash(PRICES.mgr)}</button>`;
+  html += `<p class="quiet">${mgrs.length} of ${mgrSeats} manager ${plural(mgrSeats, "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced">Security engineers</h2>
     <p class="note">Security engineers handle vulnerabilities. Each one patches exposed games on their own without a terminal, makes terminal patch builds faster, shrinks patch jobs, and cuts the nightly liability on unpatched games. Having any on staff buys an extra day before a CVE deadline. With nothing to patch, they dig for exploits in rival studios' games. Heat is ${Math.round(c.heat || 0)} out of 100.</p>`;
@@ -3245,6 +3328,24 @@ function doAction(action, id) {
       useExploit(choice, xid);
       break;
     }
+    case "hireQa":
+      if (!c.qas) c.qas = [];
+      if (c.qas.length >= QA_SEATS[c.officeLevel]) showToast("No free tester seats. Move to a bigger office.");
+      else if (spend(PRICES.qa)) {
+        const name = QA_NAMES[c.qas.length % QA_NAMES.length];
+        c.qas.push(name);
+        notify("Hired Tester " + name + ".", true);
+      }
+      break;
+    case "hireMgr":
+      if (!c.mgrs) c.mgrs = [];
+      if (c.mgrs.length >= MGR_SEATS[c.officeLevel]) showToast("No free manager seats. Move to a bigger office.");
+      else if (spend(PRICES.mgr)) {
+        const name = MGR_NAMES[c.mgrs.length % MGR_NAMES.length];
+        c.mgrs.push(name);
+        notify("Hired Manager " + name + ".", true);
+      }
+      break;
     case "hireLaw":
       if (!c.laws) c.laws = [];
       if (c.laws.length >= LAW_SEATS[c.officeLevel]) showToast("No free lawyer seats. Move to a bigger office.");

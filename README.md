@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.6. Added a top down office floor view with pods and desk sprites on the Team tab.
+Latest change. 2026-11-20, v2026.11.20.7. Added game testers who test and ship builds, and managers who make them faster.
 
 Full history is in CHANGELOG.md.
