@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20. Added bankruptcy with a run score and best runs board, and a calendar of market events with rumors.
+Latest change. 2026-11-20, v2026.11.20.1. Added vulnerabilities with code freezes, free patch jobs, nightly liability, and fines.
 
 Full history is in CHANGELOG.md.

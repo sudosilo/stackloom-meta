@@ -131,6 +131,9 @@
   .news-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2463b0; }
   .news-title { font-size: 15px; font-weight: 650; margin-top: 2px; }
   .news-text { font-size: 14px; color: var(--muted); line-height: 1.4; margin-top: 4px; }
+  .news.cve { border-color: #d0584f; }
+  .news.cve .news-tag { color: #d0584f; }
+  .prem.patch { background: #d0584f; }
   .hud-office { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hud-office.negative { color: var(--warn); font-weight: 650; }
   .fold { position: fixed; inset: 0; z-index: 35; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(241, 244, 247, 0.97); }
@@ -687,7 +690,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3.2";
+const VERSION = "stackloom-meta v3.3";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -1422,7 +1425,134 @@ function renderNews() {
     html += `<div class="news rumor"><div class="news-tag">Rumor for day ${rumor.day}</div>
       <div class="news-title">${rumor.title}</div><div class="news-text">Word is this drops soon. Plan for it.</div></div>`;
   }
+  html = renderCves() + html;
   return html ? `<h2 class="section-title">Market</h2>` + html : "";
+}
+
+
+// ------------------------------------------------------------------
+// Vulnerabilities. A CVE drops against one engine and every game the
+// studio shipped on that engine is exposed. The line goes into a code
+// freeze, free patch jobs land at the front of the queue, every unpatched
+// game costs liability money each night, and anything still unpatched at
+// the deadline gets a fine and is pulled from the catalog.
+// ------------------------------------------------------------------
+const CVE_NAMES = {
+  blocks: "Blockbleed", doku: "Sudokill", bubble: "Popshell", cards: "Shuffle Shock", runner: "Gate Crash",
+  match: "Sweet Spill", jam: "Jamjack", mob: "Mobshell", farm: "Cropdrop", shooter: "Spritestorm"
+};
+const CVE_DAYS = [10, 23, 35, 47];
+const CVE_MAX_GAMES = 6;
+
+function lineFrozen(line) {
+  return (company.cves || []).some(v => v.line === (line || "blocks") && v.games.some(id => !v.patched.includes(id)));
+}
+function cveLiability(v) { return 30 + company.day * 2; }
+function cveFine() { return 200 + company.day * 6; }
+
+function allFrozen() {
+  return lineFrozen("blocks") && SENIORS.filter(x => x.line !== "art" && lineOpen(x.line)).every(x => lineFrozen(x.line));
+}
+function catalogLine(game) { return game.src ? (game.src.line || "blocks") : null; }
+
+function maybeCve() {
+  const c = company;
+  const scripted = CVE_DAYS.includes(c.day);
+  if (!scripted && !(c.day > 12 && Math.random() < 0.12)) return;
+  const open = (c.cves || []).map(v => v.line);
+  const exposed = {};
+  c.catalog.forEach(g => {
+    const line = catalogLine(g);
+    if (!line || g.pulled || open.includes(line)) return;
+    (exposed[line] = exposed[line] || []).push(g);
+  });
+  const lines = Object.keys(exposed);
+  if (!lines.length) return;
+  lines.sort((a, b) => exposed[b].length - exposed[a].length);
+  const line = scripted ? lines[0] : pick(lines);
+  const games = exposed[line].slice(0, CVE_MAX_GAMES);
+  const critical = Math.random() < 0.5;
+  const v = {
+    cve: "CVE-" + (2026 + Math.floor(c.day / 60)) + "-" + (10000 + Math.floor(Math.random() * 89999)),
+    name: CVE_NAMES[line] || "Engine Bleed", line: line, critical: critical,
+    until: c.day + (critical ? 2 : 3), games: games.map(g => g.id), patched: []
+  };
+  if (!c.cves) c.cves = [];
+  c.cves.push(v);
+  const due = c.time + (v.until - c.day) * DAY_SECONDS - c.dayTimer;
+  games.forEach(g => {
+    const patch = Object.assign({}, g.src, {
+      id: c.nextId++, status: "queued", progress: 0, terminal: -1, builtBy: -1, bug: null, tested: true,
+      patch: true, catalogId: g.id, cveId: v.cve, pay: 0, work: Math.max(8, Math.round(g.src.work * 0.45)), deadline: due
+    });
+    c.orders.unshift(patch);
+  });
+  notify((critical ? "Critical vulnerability. " : "Vulnerability. ") + v.cve + ", nicknamed " + v.name + ", hits the " + lineLabel(line) +
+    " engine. " + games.length + " shipped " + (games.length === 1 ? "game is" : "games are") + " exposed. Code freeze on that line until they are patched, and the patches pay nothing.", true);
+}
+
+function lineLabel(line) {
+  const senior = SENIORS.find(x => x.line === line);
+  return senior ? senior.lineName.replace(/ line$/, "").toLowerCase() : "block";
+}
+
+function checkCves() {
+  const c = company;
+  if (!c.cves || !c.cves.length) return;
+  let liability = 0, repLoss = 0;
+  c.cves = c.cves.filter(v => {
+    const open = v.games.filter(id => !v.patched.includes(id));
+    if (!open.length) return false;
+    if (c.day >= v.until) {
+      const fine = open.length * cveFine();
+      c.money -= fine;
+      c.reputation = clamp(c.reputation - open.length * 4, 0, 100);
+      open.forEach(id => {
+        const g = c.catalog.find(x => x.id === id);
+        if (g) g.pulled = true;
+      });
+      c.orders = c.orders.filter(o => !(o.patch && o.cveId === v.cve && o.status !== "building"));
+      c.orders.forEach(o => { if (o.patch && o.cveId === v.cve) { c.terminals[o.terminal].job = null; o.status = "gone"; } });
+      notify("The " + v.name + " deadline passed with " + open.length + " " + plural(open.length, "game") + " unpatched. Fined " + cash(fine) + " and those games were pulled from stores.", true);
+      return false;
+    }
+    liability += open.length * cveLiability(v);
+    repLoss += 1;
+    return true;
+  });
+  if (liability) {
+    c.money -= liability;
+    c.reputation = clamp(c.reputation - repLoss, 0, 100);
+    notify("Unpatched games cost " + cash(liability) + " in liability overnight.");
+  }
+}
+
+function finishPatch(order) {
+  const c = company;
+  const v = (c.cves || []).find(x => x.cve === order.cveId);
+  const g = c.catalog.find(x => x.id === order.catalogId);
+  if (g) { g.bug = false; g.patched = true; }
+  order.status = "shipped";
+  c.reputation = clamp(c.reputation + 1, 0, 100);
+  if (v && !v.patched.includes(order.catalogId)) v.patched.push(order.catalogId);
+  if (v && v.games.every(id => v.patched.includes(id))) {
+    c.reputation = clamp(c.reputation + 3, 0, 100);
+    c.cves = c.cves.filter(x => x !== v);
+    notify("Every game hit by " + v.name + " is patched. The code freeze is over.", true);
+  } else {
+    notify("Patched the " + lookFor(order).label + " game for " + order.customer + ". No charge.");
+  }
+}
+
+function renderCves() {
+  const c = company;
+  return (c.cves || []).map(v => {
+    const done = v.patched.length, total = v.games.length;
+    const left = v.until - c.day;
+    return `<div class="news cve"><div class="news-tag">${v.critical ? "Critical" : "High"} vulnerability, ${left <= 0 ? "due tonight" : "due in " + left + " " + plural(left, "day")}</div>
+      <div class="news-title">${v.cve}, ${v.name}</div>
+      <div class="news-text">The ${lineLabel(v.line)} engine is exposed. ${done} of ${total} ${plural(total, "game")} patched. Code freeze on that line until it is done. Each unpatched game costs ${cash(cveLiability(v))} a night, and anything left at the deadline is fined ${cash(cveFine())} and pulled.</div></div>`;
+  }).join("");
 }
 
 // ------------------------------------------------------------------
@@ -1502,7 +1632,7 @@ function newCompany() {
     terminals: [{ job: null }], agents: [], devs: [], seniors: {}, upgrades: {},
     orders: [], catalog: [], nextId: 1, offerTimer: 2,
     shipped: 0, bugsShipped: 0, log: [],
-    earned: 0, debtDays: 0, over: false, events: [], fired: []
+    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: []
   };
 }
 
@@ -1980,7 +2110,8 @@ function makeOffer() {
   if (lineOpen("mob")) lines.push("mob");
   if (lineOpen("shooter")) lines.push("shooter");
   if (lineOpen("farm")) lines.push("farm");
-  const weights = lines.map(l => eventMod("demand", l));
+  let weights = lines.map(l => lineFrozen(l) ? 0 : eventMod("demand", l));
+  if (!weights.some(w => w > 0)) weights = lines.map(() => 1);
   let roll = Math.random() * weights.reduce((a, b) => a + b, 0);
   let line = lines[lines.length - 1];
   for (let i = 0; i < lines.length; i++) { roll -= weights[i]; if (roll <= 0) { line = lines[i]; break; } }
@@ -2198,6 +2329,7 @@ function finishBuild(order, i) {
   order.builtBy = i;
   order.terminal = -1;
   order.readyAt = company.time;
+  if (order.patch) { dirty = true; return; }
 
   if (Math.random() < bugChance(i)) {
     order.bug = { pieceIndex: Math.floor(Math.random() * bugSlots(order)) };
@@ -2211,6 +2343,7 @@ function finishBuild(order, i) {
 
 function shipOrder(order) {
   const c = company;
+  if (order.patch) { finishPatch(order); return; }
   const label = lookFor(order).label;
   let pay = order.pay;
   let repChange = 3;
@@ -2233,7 +2366,8 @@ function shipOrder(order) {
   c.shipped++;
   c.catalog.unshift({
     id: order.id, customer: order.customer, spec: orderSpec(order), day: c.day, premium: !!order.premium,
-    bug: !!order.bug, file: withBug(buildThemeFile(order), order.bug)
+    bug: !!order.bug, file: withBug(buildThemeFile(order), order.bug),
+    src: JSON.parse(JSON.stringify(order))
   });
   if (c.catalog.length > 30) c.catalog.length = 30;
   order.status = "shipped";
@@ -2255,7 +2389,7 @@ function runAgents() {
 
   for (let i = 0; i < managedCount; i++) {
     if (c.terminals[i].job != null) continue;
-    let order = c.orders.find(o => o.status === "queued");
+    let order = c.orders.find(o => o.status === "queued" && o.patch) || c.orders.find(o => o.status === "queued" && !lineFrozen(o.line));
     if (!order) {
       order = c.orders.find(o => o.status === "offer");
       if (order) {
@@ -2284,8 +2418,9 @@ function payBills() {
   const bill = Math.round(bills + salaries);
   c.money -= bill;
   notify("Day " + (c.day - 1) + " ended. Rent, salaries, and upkeep cost " + cash(bill) + ".");
+  checkCves();
   checkDebt();
-  if (!c.over) checkMarket();
+  if (!c.over) { checkMarket(); maybeCve(); }
 }
 
 // ------------------------------------------------------------------
@@ -2305,7 +2440,7 @@ function simulate(dt) {
 
   c.offerTimer -= dt;
   if (c.offerTimer <= 0) {
-    if (c.orders.filter(o => o.status === "offer").length < maxOffers()) {
+    if (c.orders.filter(o => o.status === "offer").length < maxOffers() && !allFrozen()) {
       c.orders.push(makeOffer());
       dirty = true;
     }
@@ -2318,7 +2453,7 @@ function simulate(dt) {
       notify(order.customer + " stopped waiting and left.");
     }
     const inProgress = order.status === "queued" || order.status === "building" || order.status === "ready";
-    if (inProgress && c.time > order.deadline + 60) {
+    if (inProgress && !order.patch && c.time > order.deadline + 60) {
       if (order.status === "building") c.terminals[order.terminal].job = null;
       order.status = "gone";
       c.reputation = clamp(c.reputation - 5, 0, 100);
@@ -2330,6 +2465,7 @@ function simulate(dt) {
     if (terminal.job == null) return;
     const order = findOrder(terminal.job);
     if (!order || order.status !== "building") { terminal.job = null; return; }
+    if (!order.patch && lineFrozen(order.line)) return;
     order.progress += dt * terminalSpeed(i) * lineBoost(order);
     if (order.progress >= order.work) finishBuild(order, i);
   });
@@ -2381,7 +2517,7 @@ function motifLine(order) {
   return motifs.length ? `<div class="motifs">${motifs.join(" ")}</div>` : "";
 }
 
-function premTag(item) { return item.premium ? `<span class="prem">Premium</span>` : ""; }
+function premTag(item) { return (item.premium ? `<span class="prem">Premium</span>` : "") + (item.patch ? `<span class="prem patch">Patch</span>` : ""); }
 
 function renderOrders() {
   const offers = company.orders.filter(o => o.status === "offer");
@@ -2428,7 +2564,7 @@ function renderOrders() {
       status = "Waiting for a terminal";
       buttons = `<button class="btn primary" data-do="assign" data-id="${order.id}">Assign to a terminal</button>`;
     } else if (order.status === "building") {
-      status = "Building on Terminal " + (order.terminal + 1);
+      status = (!order.patch && lineFrozen(order.line) ? "Code freeze. Paused on Terminal " : "Building on Terminal ") + (order.terminal + 1);
       bar = `<div class="bar"><i data-progress="${order.id}"></i></div>`;
     } else if (order.status === "ready") {
       if (isManaged(order.builtBy)) status = "Built. Agent " + agentFor(order.builtBy) + " ships it in a few seconds.";
@@ -2624,7 +2760,7 @@ function renderGames() {
         <div class="order-body">
           <div class="customer">${game.file.themeName} for ${game.customer}${premTag(game)}</div>
           <div class="spec">${game.spec}${game.day ? ". Shipped on day " + game.day : ""}</div>
-          ${game.bug ? `<div class="status warn">Shipped with a bug</div>` : ""}
+          ${game.pulled ? `<div class="status warn">Pulled from stores after a vulnerability</div>` : game.bug ? `<div class="status warn">Shipped with a bug</div>` : game.patched ? `<div class="status">Patched</div>` : ""}
           <div class="actions">
             <button class="btn primary" data-do="play" data-id="${game.id}">Play</button>
             <button class="btn" data-do="gamefile" data-id="${game.id}">View file</button>
