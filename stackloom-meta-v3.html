@@ -690,7 +690,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3.3";
+const VERSION = "stackloom-meta v3.4";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -1233,7 +1233,9 @@ const SHOOT_BOMBS = {
 const DAY_SECONDS = 45;
 const SAVE_KEY = "stackloom-company-1";
 
-const PRICES = { agent: 500, agentSalary: 60, dev: 1500, devSalary: 150, terminalUpkeep: 10 };
+const PRICES = { agent: 500, agentSalary: 60, dev: 1500, devSalary: 150, terminalUpkeep: 10, sec: 1200, secSalary: 120 };
+const SEC_SEATS = [1, 1, 2, 4];
+const SEC_NAMES = ["Vex", "Hollis", "Quill", "Dara"];
 
 const OFFICES = [
   { name: "Garage", terminals: 2, agents: 1, devs: 0, rent: 0, cost: 0 },
@@ -1447,7 +1449,8 @@ const CVE_MAX_GAMES = 6;
 function lineFrozen(line) {
   return (company.cves || []).some(v => v.line === (line || "blocks") && v.games.some(id => !v.patched.includes(id)));
 }
-function cveLiability(v) { return 30 + company.day * 2; }
+function secCount() { return (company.secs || []).length; }
+function cveLiability(v) { return Math.round((30 + company.day * 2) * Math.max(0.25, 1 - 0.25 * secCount())); }
 function cveFine() { return 200 + company.day * 6; }
 
 function allFrozen() {
@@ -1475,7 +1478,7 @@ function maybeCve() {
   const v = {
     cve: "CVE-" + (2026 + Math.floor(c.day / 60)) + "-" + (10000 + Math.floor(Math.random() * 89999)),
     name: CVE_NAMES[line] || "Engine Bleed", line: line, critical: critical,
-    until: c.day + (critical ? 2 : 3), games: games.map(g => g.id), patched: []
+    until: c.day + (critical ? 2 : 3) + (secCount() ? 1 : 0), games: games.map(g => g.id), patched: []
   };
   if (!c.cves) c.cves = [];
   c.cves.push(v);
@@ -1483,7 +1486,7 @@ function maybeCve() {
   games.forEach(g => {
     const patch = Object.assign({}, g.src, {
       id: c.nextId++, status: "queued", progress: 0, terminal: -1, builtBy: -1, bug: null, tested: true,
-      patch: true, catalogId: g.id, cveId: v.cve, pay: 0, work: Math.max(8, Math.round(g.src.work * 0.45)), deadline: due
+      patch: true, catalogId: g.id, cveId: v.cve, pay: 0, work: Math.max(6, Math.round(g.src.work * 0.45 * Math.max(0.4, 1 - 0.12 * secCount()))), deadline: due
     });
     c.orders.unshift(patch);
   });
@@ -1512,7 +1515,7 @@ function checkCves() {
         if (g) g.pulled = true;
       });
       c.orders = c.orders.filter(o => !(o.patch && o.cveId === v.cve && o.status !== "building"));
-      c.orders.forEach(o => { if (o.patch && o.cveId === v.cve) { c.terminals[o.terminal].job = null; o.status = "gone"; } });
+      c.orders.forEach(o => { if (o.patch && o.cveId === v.cve) { if (o.terminal >= 0) c.terminals[o.terminal].job = null; o.status = "gone"; } });
       notify("The " + v.name + " deadline passed with " + open.length + " " + plural(open.length, "game") + " unpatched. Fined " + cash(fine) + " and those games were pulled from stores.", true);
       return false;
     }
@@ -1525,6 +1528,30 @@ function checkCves() {
     c.reputation = clamp(c.reputation - repLoss, 0, 100);
     notify("Unpatched games cost " + cash(liability) + " in liability overnight.");
   }
+}
+
+// Security engineers work patches themselves, off the terminals, and
+// make terminal patch builds go faster.
+function runSecurity(dt) {
+  const c = company;
+  (c.secs || []).forEach(name => {
+    let order = c.orders.find(o => o.patch && o.status === "building" && o.secBy === name);
+    if (!order) {
+      order = c.orders.find(o => o.patch && o.status === "queued");
+      if (!order) return;
+      order.status = "building";
+      order.terminal = -1;
+      order.secBy = name;
+      order.progress = 0;
+      dirty = true;
+    }
+    order.progress += dt * 1.5;
+    if (order.progress >= order.work) {
+      order.progress = order.work;
+      finishPatch(order);
+      dirty = true;
+    }
+  });
 }
 
 function finishPatch(order) {
@@ -1632,7 +1659,7 @@ function newCompany() {
     terminals: [{ job: null }], agents: [], devs: [], seniors: {}, upgrades: {},
     orders: [], catalog: [], nextId: 1, offerTimer: 2,
     shipped: 0, bugsShipped: 0, log: [],
-    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: []
+    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: [], secs: []
   };
 }
 
@@ -2414,7 +2441,7 @@ function payBills() {
   const c = company;
   const seniorPay = SENIORS.filter(x => c.seniors[x.key]).reduce((sum, x) => sum + x.salary, 0);
   const bills = (office().rent + c.terminals.length * PRICES.terminalUpkeep) * eventMod("bills");
-  const salaries = (c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + seniorPay) * eventMod("salaries");
+  const salaries = (c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + (c.secs || []).length * PRICES.secSalary + seniorPay) * eventMod("salaries");
   const bill = Math.round(bills + salaries);
   c.money -= bill;
   notify("Day " + (c.day - 1) + " ended. Rent, salaries, and upkeep cost " + cash(bill) + ".");
@@ -2466,11 +2493,12 @@ function simulate(dt) {
     const order = findOrder(terminal.job);
     if (!order || order.status !== "building") { terminal.job = null; return; }
     if (!order.patch && lineFrozen(order.line)) return;
-    order.progress += dt * terminalSpeed(i) * lineBoost(order);
+    order.progress += dt * terminalSpeed(i) * lineBoost(order) * (order.patch ? 1 + 0.6 * secCount() : 1);
     if (order.progress >= order.work) finishBuild(order, i);
   });
 
   runAgents();
+  runSecurity(dt);
   cleanup();
 }
 
@@ -2564,7 +2592,8 @@ function renderOrders() {
       status = "Waiting for a terminal";
       buttons = `<button class="btn primary" data-do="assign" data-id="${order.id}">Assign to a terminal</button>`;
     } else if (order.status === "building") {
-      status = (!order.patch && lineFrozen(order.line) ? "Code freeze. Paused on Terminal " : "Building on Terminal ") + (order.terminal + 1);
+      status = order.secBy ? "Security engineer " + order.secBy + " is patching it"
+        : (!order.patch && lineFrozen(order.line) ? "Code freeze. Paused on Terminal " : "Building on Terminal ") + (order.terminal + 1);
       bar = `<div class="bar"><i data-progress="${order.id}"></i></div>`;
     } else if (order.status === "ready") {
       if (isManaged(order.builtBy)) status = "Built. Agent " + agentFor(order.builtBy) + " ships it in a few seconds.";
@@ -2680,6 +2709,25 @@ function renderTeam() {
   else if (c.devs.length >= room.devs) html += `<button class="btn wide" disabled>No free dev seats. Move to a bigger office.</button>`;
   else html += `<button class="btn primary wide" data-do="hireDev">Hire a dev for ${cash(PRICES.dev)}</button>`;
   html += `<p class="quiet">${c.devs.length} of ${room.devs} dev ${plural(room.devs, "seat")} used.</p></div>`;
+
+  html += `<h2 class="section-title spaced">Security engineers</h2>
+    <p class="note">Security engineers handle vulnerabilities. Each one patches exposed games on their own without a terminal, makes terminal patch builds faster, shrinks patch jobs, and cuts the nightly liability on unpatched games. Having any on staff buys an extra day before a CVE deadline.</p>`;
+  const secs = c.secs || [];
+  if (!secs.length) html += `<p class="empty">No security engineers yet. A vulnerability will land on the terminals.</p>`;
+  secs.forEach(name => {
+    const busy = c.orders.find(o => o.patch && o.status === "building" && o.secBy === name);
+    html += `
+      <div class="row">
+        <div class="row-top"><div class="row-name">Security engineer ${name}</div><div class="row-state ${busy ? "busy" : ""}">${cash(PRICES.secSalary)} a day</div></div>
+        <div class="row-sub">${busy ? "Patching the " + lookFor(busy).label + " game for " + busy.customer : "Watching the feeds. Nothing to patch."}</div>
+        ${busy ? `<div class="bar"><i data-progress="${busy.id}"></i></div>` : ""}
+      </div>`;
+  });
+  const secSeats = SEC_SEATS[c.officeLevel];
+  html += `<div class="buy">`;
+  if (secs.length >= secSeats) html += `<button class="btn wide" disabled>No free security seats. Move to a bigger office.</button>`;
+  else html += `<button class="btn primary wide" data-do="hireSec">Hire a security engineer for ${cash(PRICES.sec)}</button>`;
+  html += `<p class="quiet">${secs.length} of ${secSeats} security ${plural(secSeats, "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced">Senior hires</h2>
     <p class="note">Experienced developers cost a lot more and each one needs the one before them on staff. Every senior hire opens a new product line for the studio.</p>`;
@@ -2912,6 +2960,15 @@ function doAction(action, id) {
         const name = DEV_NAMES[c.devs.length % DEV_NAMES.length];
         c.devs.push(name);
         notify("Hired Dev " + name + ".", true);
+      }
+      break;
+    case "hireSec":
+      if (!c.secs) c.secs = [];
+      if (c.secs.length >= SEC_SEATS[c.officeLevel]) showToast("No free security seats. Move to a bigger office.");
+      else if (spend(PRICES.sec)) {
+        const name = SEC_NAMES[c.secs.length % SEC_NAMES.length];
+        c.secs.push(name);
+        notify("Hired security engineer " + name + ".", true);
       }
       break;
     case "hireSenior": {

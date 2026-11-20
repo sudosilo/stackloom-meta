@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.1. Added vulnerabilities with code freezes, free patch jobs, nightly liability, and fines.
+Latest change. 2026-11-20, v2026.11.20.2. Added security engineers who patch vulnerabilities and soften their cost.
 
 Full history is in CHANGELOG.md.
