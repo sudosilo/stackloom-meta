@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-19, v2026.11.19.2. Added the Shooter line built from Dragon Drop, opened by hiring an arcade veteran.
+Latest change. 2026-11-20, v2026.11.20. Added bankruptcy with a run score and best runs board, and a calendar of market events with rumors.
 
 Full history is in CHANGELOG.md.
