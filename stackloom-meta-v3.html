@@ -162,6 +162,9 @@
   .news.heist .news-tag { color: #8f6ee8; }
   .news.cve .news-tag { color: #d0584f; }
   .prem.patch { background: #d0584f; }
+  .prem.repeat { background: #3f9a3a; }
+  .campaigns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .campaigns .btn { min-height: 38px; padding: 6px 12px; font-size: 14px; }
   .hud-office { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hud-office.negative { color: var(--warn); font-weight: 650; }
   .fold { position: fixed; inset: 0; z-index: 35; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(241, 244, 247, 0.97); }
@@ -432,6 +435,9 @@
 
     <h2>The office</h2>
     <p>Bigger offices hold more terminals and more staff, and cost more rent. Upgrades on the Office tab make the whole studio faster or cleaner.</p>
+
+    <h2>Marketing and sales</h2>
+    <p>Marketers run ad campaigns that pump one product line for a few days, so you can ride a streamer craze harder or dig out of a rival's release. Salespeople get more money out of every order, keep customers waiting longer, and turn happy customers into repeat clients. Coffee is for closers, so the lobby coffee bar makes sales squeeze harder.</p>
 
     <h2>Game Smash parties</h2>
     <p>Every so often the office throws a hackathon. For a day everybody builds much faster on pizza and energy drinks and customers show up for the buzz, but the catering bill hits up front and tired people write more bugs. A rumor warns you a day or two ahead.</p>
@@ -763,7 +769,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3.10";
+const VERSION = "stackloom-meta v3.11";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -1306,7 +1312,11 @@ const SHOOT_BOMBS = {
 const DAY_SECONDS = 45;
 const SAVE_KEY = "stackloom-company-1";
 
-const PRICES = { agent: 500, agentSalary: 60, dev: 1500, devSalary: 150, terminalUpkeep: 10, sec: 1200, secSalary: 120, law: 1500, lawSalary: 140, qa: 700, qaSalary: 70, mgr: 1800, mgrSalary: 170 };
+const PRICES = { agent: 500, agentSalary: 60, dev: 1500, devSalary: 150, terminalUpkeep: 10, sec: 1200, secSalary: 120, law: 1500, lawSalary: 140, qa: 700, qaSalary: 70, mgr: 1800, mgrSalary: 170, mkt: 1600, mktSalary: 150, sales: 1000, salesSalary: 110 };
+const MKT_SEATS = [0, 1, 2, 3];
+const SALES_SEATS = [1, 1, 2, 4];
+const MKT_NAMES = ["Skye", "Brennan", "Jules"];
+const SALES_NAMES = ["Shelley", "Ricky", "Dave", "Blake"];
 const QA_SEATS = [1, 2, 4, 6];
 const MGR_SEATS = [0, 1, 1, 2];
 const QA_NAMES = ["Pixel", "Dusty", "Moxie", "Tibs", "Gigi", "Bo"];
@@ -1446,6 +1456,8 @@ const MARKET_EVENTS = [
   { id: "smash", day: -1, days: 1, title: "Game Smash party",
     text: "A hackathon in the office. Everybody builds a lot faster on pizza and energy drinks, the catering bill lands up front, tired people write more bugs, and the buzz brings in customers.",
     speed: 1.6, bugs: 1.4, traffic: 1.3, smash: true, rep: 2 },
+  { id: "campaign", day: -1, days: 3, title: "Ad campaign",
+    text: "Your marketing team is pushing one product line hard. Way more orders for it, and they pay a little more.", campaign: true },
   { id: "indie_hit", day: 56, days: 4, title: "A tiny indie game sells millions",
     text: "Every investor wants a game studio now. Customers show up faster and pay a little more.",
     traffic: 1.5, pay: { all: 1.1 } }
@@ -1459,6 +1471,12 @@ function eventMod(kind, line) {
   let m = 1;
   activeEvents().forEach(a => {
     const d = eventDef(a.id);
+    if (d.campaign) {
+      if (kind === "demand" && line === a.line) m *= 1 + 2.5 * (a.boost || 1);
+      if (kind === "pay" && line === a.line) m *= 1 + 0.15 * (a.boost || 1);
+      if (kind === "traffic") m *= 1.1;
+      return;
+    }
     if (kind === "pay") {
       if (d.pay && d.pay.all) m *= d.pay.all;
       if (d.pay && line && d.pay[line]) m *= d.pay[line];
@@ -1500,7 +1518,7 @@ function checkMarket() {
   if (scripted) { fireEvent(scripted); return; }
   if (c.day > LAST_SCRIPTED && c.day % 4 === 0) {
     const active = activeEvents().map(a => a.id);
-    fireEvent(pick(MARKET_EVENTS.filter(e => e.day > 0 && !e.smash && !active.includes(e.id))));
+    fireEvent(pick(MARKET_EVENTS.filter(e => e.day > 0 && !e.smash && !e.campaign && !active.includes(e.id))));
   }
 }
 
@@ -1520,7 +1538,7 @@ function renderNews() {
     const d = eventDef(a.id);
     const left = a.until - c.day;
     html += `<div class="news"><div class="news-tag">Market news, ${left} ${plural(left, "day")} left</div>
-      <div class="news-title">${a.title || d.title}</div><div class="news-text">${d.text}</div></div>`;
+      <div class="news-title">${a.title || d.title}</div><div class="news-text">${d.campaign ? "More " + lineLabel(a.line) + " orders and better pay for them, plus a little more traffic overall." : d.text}</div></div>`;
   });
   const rumor = nextRumor();
   if (rumor) {
@@ -1856,7 +1874,7 @@ function newCompany() {
     terminals: [{ job: null }], agents: [], devs: [], seniors: {}, upgrades: {},
     orders: [], catalog: [], nextId: 1, offerTimer: 2,
     shipped: 0, bugsShipped: 0, log: [],
-    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: [], secs: [], intel: 0, exploits: [], heat: 0, laws: [], qas: [], mgrs: []
+    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: [], secs: [], intel: 0, exploits: [], heat: 0, laws: [], qas: [], mgrs: [], mkts: [], sales: []
   };
 }
 
@@ -1887,8 +1905,39 @@ let fireArmed = { id: null, until: 0 };
 const STAFF_ROLES = [
   { role: "agent", list: "agents", title: "Agent" }, { role: "dev", list: "devs", title: "Dev" },
   { role: "qa", list: "qas", title: "Tester" }, { role: "mgr", list: "mgrs", title: "Manager" },
-  { role: "sec", list: "secs", title: "Security engineer" }, { role: "law", list: "laws", title: "Lawyer" }
+  { role: "sec", list: "secs", title: "Security engineer" }, { role: "law", list: "laws", title: "Lawyer" },
+  { role: "mkt", list: "mkts", title: "Marketer" }, { role: "sales", list: "sales", title: "Salesperson" }
 ];
+
+// ------------------------------------------------------------------
+// Marketing runs campaigns that pump one product line for a few days.
+// Sales squeezes more money out of every customer, keeps them waiting
+// longer, and turns some of them into repeat clients. Closers get coffee.
+// ------------------------------------------------------------------
+function openLineKeys() { return ["blocks"].concat(SENIORS.filter(x => x.line !== "art" && lineOpen(x.line)).map(x => x.line)); }
+function lineName(line) { const n = lineLabel(line); return n[0].toUpperCase() + n.slice(1); }
+function campaigns() { return activeEvents().filter(a => a.id === "campaign"); }
+function campaignCost() { return 250 + company.day * 12; }
+function salesTeam() { return company.sales || []; }
+function salesPayMult() {
+  return 1 + salesTeam().reduce((sum, n) => sum + (0.07 + (company.upgrades.coffee ? 0.04 : 0)) * perfMult("sales", n), 0);
+}
+function repeatChance() { return Math.min(0.6, salesTeam().reduce((sum, n) => sum + 0.15 * perfMult("sales", n), 0)); }
+function launchCampaign(line) {
+  const c = company;
+  const mkts = c.mkts || [];
+  if (!mkts.length) { showToast("Hire a marketer first."); return; }
+  if (campaigns().length >= mkts.length) { showToast("Every marketer is already running a campaign."); return; }
+  if (campaigns().some(a => a.line === line)) { showToast("That line already has a campaign running."); return; }
+  if (lineFrozen(line)) { showToast("That line is in a code freeze. Nobody wants ads for a hacked game."); return; }
+  if (!spend(campaignCost())) return;
+  const who = mkts.find(n => !campaigns().some(a => a.by === n)) || mkts[0];
+  const boost = perfMult("mkt", who);
+  if (!c.events) c.events = [];
+  c.events.push({ id: "campaign", line: line, by: who, boost: boost, until: c.day + 3,
+    title: lineName(line) + " line ad campaign by " + who });
+  notify("Marketer " + who + " launched an ad campaign for the " + lineLabel(line) + " line. Expect a flood of those orders.", true);
+}
 function getPerf(role, name) {
   const p = (company.perf || {})[role + ":" + name];
   return p == null ? 70 : p;
@@ -2395,7 +2444,7 @@ const HOUSE_GAME = {
 // Orders moving through the studio:
 // offer, then queued, then building, then ready, then shipped
 // ------------------------------------------------------------------
-function makeOffer() {
+function makeOffer(forcedLine) {
   const lines = ["blocks"];
   if (lineOpen("doku")) lines.push("doku");
   if (lineOpen("bubble")) lines.push("bubble");
@@ -2411,6 +2460,7 @@ function makeOffer() {
   let roll = Math.random() * weights.reduce((a, b) => a + b, 0);
   let line = lines[lines.length - 1];
   for (let i = 0; i < lines.length; i++) { roll -= weights[i]; if (roll <= 0) { line = lines[i]; break; } }
+  if (forcedLine && lines.includes(forcedLine)) line = forcedLine;
   let order;
   if (line === "doku") order = makeDokuOffer();
   else if (line === "bubble") order = makeBubbleOffer();
@@ -2427,8 +2477,9 @@ function makeOffer() {
     order.work += PREMIUM.work;
     order.pay = Math.round(order.pay * PREMIUM.payBoost / 5) * 5;
   }
-  const market = eventMod("pay", line) * (order.premium ? eventPremium() : 1);
+  const market = eventMod("pay", line) * (order.premium ? eventPremium() : 1) * salesPayMult();
   if (market !== 1) order.pay = Math.round(order.pay * market / 5) * 5;
+  order.expiresAt += salesTeam().length * 12;
   return order;
 }
 
@@ -2668,6 +2719,14 @@ function shipOrder(order) {
   if (c.catalog.length > 30) c.catalog.length = 30;
   order.status = "shipped";
   notify(message, (!isManaged(order.builtBy) && !order.qa) || !!order.bug);
+  if (!order.bug && salesTeam().length && Math.random() < repeatChance()) {
+    const again = makeOffer(order.line || "blocks");
+    again.customer = order.customer;
+    again.repeat = true;
+    again.pay = Math.round(again.pay * 1.1 / 5) * 5;
+    c.orders.push(again);
+    notify(pick(salesTeam()) + " from sales got " + order.customer + " to order another game.", true);
+  }
 }
 
 function cleanup() {
@@ -2742,7 +2801,7 @@ function payBills() {
   const c = company;
   const seniorPay = SENIORS.filter(x => c.seniors[x.key]).reduce((sum, x) => sum + x.salary, 0);
   const bills = (office().rent + c.terminals.length * PRICES.terminalUpkeep + (c.upgrades.coffee ? 25 : 0)) * eventMod("bills");
-  const salaries = (c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + (c.secs || []).length * PRICES.secSalary + (c.laws || []).length * PRICES.lawSalary + (c.qas || []).length * PRICES.qaSalary + (c.mgrs || []).length * PRICES.mgrSalary + seniorPay) * eventMod("salaries");
+  const salaries = (c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + (c.secs || []).length * PRICES.secSalary + (c.laws || []).length * PRICES.lawSalary + (c.qas || []).length * PRICES.qaSalary + (c.mgrs || []).length * PRICES.mgrSalary + (c.mkts || []).length * PRICES.mktSalary + (c.sales || []).length * PRICES.salesSalary + seniorPay) * eventMod("salaries");
   const bill = Math.round(bills + salaries);
   c.money -= bill;
   notify("Day " + (c.day - 1) + " ended. Rent, salaries, and upkeep cost " + cash(bill) + ".");
@@ -2850,7 +2909,7 @@ function motifLine(order) {
   return motifs.length ? `<div class="motifs">${motifs.join(" ")}</div>` : "";
 }
 
-function premTag(item) { return (item.premium ? `<span class="prem">Premium</span>` : "") + (item.patch ? `<span class="prem patch">Patch</span>` : ""); }
+function premTag(item) { return (item.premium ? `<span class="prem">Premium</span>` : "") + (item.patch ? `<span class="prem patch">Patch</span>` : "") + (item.repeat ? `<span class="prem repeat">Repeat</span>` : ""); }
 
 function renderOrders() {
   const offers = company.orders.filter(o => o.status === "offer");
@@ -2992,6 +3051,10 @@ function floorPods() {
       people: (c.qas || []).map(n => ({ name: "Tester " + n, busy: c.orders.some(o => o.status === "ready" && o.qa === n) })) },
     { name: "Manager pod", kind: "mgr", color: "#b07a12", seats: MGR_SEATS[L], locked: MGR_SEATS[L] === 0 ? OFFICES[MGR_SEATS.findIndex(n => n > 0)].name.toLowerCase() : "",
       people: (c.mgrs || []).map(n => ({ name: "Manager " + n, busy: (c.qas || []).length > 0 })) },
+    { name: "Marketing pod", kind: "mkt", color: "#d14f9c", seats: MKT_SEATS[L], locked: MKT_SEATS[L] === 0 ? OFFICES[MKT_SEATS.findIndex(n => n > 0)].name.toLowerCase() : "",
+      people: (c.mkts || []).map(n => ({ name: "Marketer " + n, busy: campaigns().some(a => a.by === n) })) },
+    { name: "Sales pod", kind: "sales", color: "#c0392b", seats: SALES_SEATS[L],
+      people: (c.sales || []).map(n => ({ name: "Salesperson " + n, busy: true })) },
     { name: "Design pod", kind: "design", color: "#e8862e", seats: Math.max(seniorsHere.length, hiredSeniors.length), wide: true,
       locked: !seniorsHere.length && !hiredSeniors.length ? OFFICES[Math.min(...SENIORS.map(x => x.office))].name.toLowerCase() : "",
       people: hiredSeniors.map(x => ({ name: x.title + " " + x.name, busy: c.orders.some(o => o.status === "building" && (o.line || "blocks") === x.line) })) }
@@ -3004,6 +3067,7 @@ function floorPerson(x, y, p, kind, color) {
   let g = `<g class="${p.busy ? "typing" : "idle"}"><title>${p.name}</title>`;
   g += `<ellipse cx="${x}" cy="${y + 2}" rx="11" ry="6.5" fill="${color}" stroke="#1c2833" stroke-width="1.2"/>`;
   if (kind === "law") g += `<path d="M${x - 2} ${y - 3} L${x} ${y + 6} L${x + 2} ${y - 3}Z" fill="#d0584f"/>`;
+  if (kind === "sales") g += `<path d="M${x - 2} ${y - 3} L${x} ${y + 6} L${x + 2} ${y - 3}Z" fill="#f2c230"/>`;
   if (kind === "mgr") g += `<path d="M${x - 2} ${y - 3} L${x} ${y + 6} L${x + 2} ${y - 3}Z" fill="#2463b0"/><rect x="${x + 6}" y="${y - 2}" width="6" height="8" rx="1" fill="#f6efe0" stroke="#1c2833" stroke-width="0.8"/>`;
   if (kind === "sec") {
     g += `<circle cx="${x}" cy="${y - 1}" r="7.2" fill="${color}" stroke="#1c2833" stroke-width="1.2"/>`;
@@ -3011,6 +3075,7 @@ function floorPerson(x, y, p, kind, color) {
   } else {
     g += `<circle cx="${x}" cy="${y - 1}" r="5.6" fill="${skin}" stroke="#1c2833" stroke-width="1"/>`;
     g += `<path d="M${x - 5.6} ${y - 1} A5.6 5.6 0 0 1 ${x + 5.6} ${y - 1} L${x + 4} ${y + 1} L${x - 4} ${y + 1}Z" fill="${kind === "design" ? "#d0584f" : hair}"/>`;
+    if (kind === "mkt") g += `<rect x="${x - 5}" y="${y - 2.5}" width="10" height="2.6" rx="1.2" fill="#1c2833"/>`;
     if (kind === "qa") g += `<path d="M${x - 6.5} ${y} A6.5 6.5 0 0 1 ${x + 6.5} ${y}" fill="none" stroke="#1c2833" stroke-width="1.6"/><circle cx="${x - 6.5}" cy="${y}" r="1.8" fill="#2463b0"/><circle cx="${x + 6.5}" cy="${y}" r="1.8" fill="#2463b0"/>`;
   }
   return g + `</g>`;
@@ -3219,6 +3284,53 @@ function renderTeam() {
   if (secs.length >= secSeats) html += `<button class="btn wide" disabled>No free security seats. Move to a bigger office.</button>`;
   else html += `<button class="btn primary wide" data-do="hireSec">Hire a security engineer for ${cash(PRICES.sec)}</button>`;
   html += `<p class="quiet">${secs.length} of ${secSeats} security ${plural(secSeats, "seat")} used.</p></div>`;
+
+  html += `<h2 class="section-title spaced">Marketing</h2>
+    <p class="note">Each marketer can run one ad campaign at a time. A campaign pumps one product line for a few days: way more orders for it, better pay on them, and a little more traffic overall. Campaigns cost money up front. A marketer who is on fire runs a bigger campaign.</p>`;
+  const mkts = c.mkts || [];
+  if (!mkts.length) html += `<p class="empty">No marketers yet. The market just happens to you.</p>`;
+  mkts.forEach((name, mi) => {
+    const running = campaigns().find(a => a.by === name);
+    html += `
+      <div class="row">
+        <div class="row-top"><div class="row-name">Marketer ${name}</div><div class="row-state ${running ? "busy" : ""}">${cash(PRICES.mktSalary)} a day</div></div>
+        ${perfHtml("mkt", name, mi)}
+        <div class="row-sub">${running ? "Running the " + lineLabel(running.line) + " campaign until day " + running.until : "Free for a new campaign"}</div>
+      </div>`;
+  });
+  if (mkts.length) {
+    const free = campaigns().length < mkts.length;
+    html += `<p class="quiet" style="margin:4px 2px 8px">Launch a campaign for ${cash(campaignCost())}. ${campaigns().length} of ${mkts.length} running.</p><div class="campaigns">` +
+      openLineKeys().map(line => {
+        const on = campaigns().some(a => a.line === line);
+        return `<button class="btn ${on ? "" : "primary"}" data-do="campaign" data-id="${line}" ${!free || on || lineFrozen(line) ? "disabled" : ""}>${lineName(line)}${on ? " running" : ""}</button>`;
+      }).join("") + `</div>`;
+  }
+  const mktSeats = MKT_SEATS[c.officeLevel];
+  html += `<div class="buy">`;
+  if (mktSeats === 0) html += `<button class="btn wide" disabled>The garage has no room for marketing</button>`;
+  else if (mkts.length >= mktSeats) html += `<button class="btn wide" disabled>No free marketing seats. Move to a bigger office.</button>`;
+  else html += `<button class="btn primary wide" data-do="hireMkt">Hire a marketer for ${cash(PRICES.mkt)}</button>`;
+  html += `<p class="quiet">${mkts.length} of ${mktSeats} marketing ${plural(mktSeats, "seat")} used.</p></div>`;
+
+  html += `<h2 class="section-title spaced">Sales</h2>
+    <p class="note">Salespeople squeeze more money out of every new order, keep customers waiting longer before they walk, and turn happy customers into repeat clients who order again. Closers get coffee: with the lobby coffee bar, every salesperson squeezes even harder.</p>`;
+  const sales = salesTeam();
+  if (!sales.length) html += `<p class="empty">No salespeople yet. Customers pay sticker price.</p>`;
+  sales.forEach((name, xi) => {
+    html += `
+      <div class="row">
+        <div class="row-top"><div class="row-name">Salesperson ${name}</div><div class="row-state">${cash(PRICES.salesSalary)} a day</div></div>
+        ${perfHtml("sales", name, xi)}
+        <div class="row-sub">${c.upgrades.coffee ? "Drinking the good coffee and closing" : "Working the phones without coffee"}</div>
+      </div>`;
+  });
+  if (sales.length) html += `<p class="quiet" style="margin:4px 2px 8px">New orders pay ${Math.round((salesPayMult() - 1) * 100)} percent more. Repeat client chance ${Math.round(repeatChance() * 100)} percent per clean ship.</p>`;
+  const salesSeats = SALES_SEATS[c.officeLevel];
+  html += `<div class="buy">`;
+  if (sales.length >= salesSeats) html += `<button class="btn wide" disabled>No free sales seats. Move to a bigger office.</button>`;
+  else html += `<button class="btn primary wide" data-do="hireSales">Hire a salesperson for ${cash(PRICES.sales)}</button>`;
+  html += `<p class="quiet">${sales.length} of ${salesSeats} sales ${plural(salesSeats, "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced">Lawyers</h2>
     <p class="note">Lawyers shrink every fine and legal bill, soften the reputation hit when the studio gets caught, and cool off heat faster each night. When there is no vulnerability open, they send cease and desist letters to rivals and sometimes a settlement check comes back.</p>`;
@@ -3478,6 +3590,29 @@ function doAction(action, id) {
       useExploit(choice, xid);
       break;
     }
+    case "campaign":
+      launchCampaign(id);
+      break;
+    case "hireMkt":
+      if (!c.mkts) c.mkts = [];
+      if (c.mkts.length >= MKT_SEATS[c.officeLevel]) showToast("No free marketing seats. Move to a bigger office.");
+      else if (spend(PRICES.mkt)) {
+        const name = MKT_NAMES[c.mkts.length % MKT_NAMES.length];
+        c.mkts.push(name);
+        setPerf("mkt", name, 55 + Math.random() * 40);
+        notify("Hired Marketer " + name + ".", true);
+      }
+      break;
+    case "hireSales":
+      if (!c.sales) c.sales = [];
+      if (c.sales.length >= SALES_SEATS[c.officeLevel]) showToast("No free sales seats. Move to a bigger office.");
+      else if (spend(PRICES.sales)) {
+        const name = SALES_NAMES[c.sales.length % SALES_NAMES.length];
+        c.sales.push(name);
+        setPerf("sales", name, 55 + Math.random() * 40);
+        notify("Hired Salesperson " + name + ". Always be closing.", true);
+      }
+      break;
     case "fire":
       fireStaff(id);
       break;

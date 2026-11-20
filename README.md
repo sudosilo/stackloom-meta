@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.8. Added the machine room, performance meters with firing, the lobby coffee bar, and Game Smash parties.
+Latest change. 2026-11-20, v2026.11.20.9. Added marketing campaigns and a sales team with repeat clients.
 
 Full history is in CHANGELOG.md.
