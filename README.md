@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.4. Added lawyers who cut fines, cool heat, and squeeze settlements out of rivals.
+Latest change. 2026-11-20, v2026.11.20.5. Added the How Stackloom works screen behind the info button, opening with the point of the game.
 
 Full history is in CHANGELOG.md.

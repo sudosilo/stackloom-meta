@@ -47,7 +47,17 @@
   .hud-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
   .money { font-size: 28px; font-weight: 750; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
   .money.negative { color: var(--warn); }
-  .hud-facts { display: flex; gap: 12px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .info-btn { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 2px solid #2463b0; background: var(--surface); color: #2463b0; font: 700 17px/1 Georgia, serif; font-style: italic; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .help { position: fixed; inset: 0; z-index: 36; display: flex; flex-direction: column; background: var(--page); }
+  .help[hidden] { display: none; }
+  .help-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: calc(env(safe-area-inset-top) + 12px) 16px 12px; border-bottom: 3px solid #2463b0; background: var(--surface); }
+  .help-top h1 { font-size: 20px; font-weight: 750; letter-spacing: -0.02em; }
+  .help-body { flex: 1; overflow-y: auto; padding: 16px 16px 40px; max-width: 640px; width: 100%; margin: 0 auto; }
+  .help-body h2 { font-size: 16px; font-weight: 700; margin: 20px 0 6px; color: #2463b0; }
+  .help-body p { font-size: 15px; line-height: 1.5; margin-bottom: 8px; }
+  .help-pitch { background: var(--surface); border: 2px solid #2463b0; border-radius: 14px; padding: 14px; }
+  .help-pitch p { font-size: 16px; }
+  .hud-facts { display: flex; gap: 12px; margin-left: auto; align-self: center; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .hud-office { font-size: 13px; color: var(--muted); margin-top: 1px; }
   .daybar { height: 3px; background: var(--edge); margin: 10px -16px 0; }
   .daybar i { display: block; height: 100%; width: 0; background: var(--accent); }
@@ -364,6 +374,7 @@
     <div class="hud-row">
       <div id="hudMoney" class="money">$0</div>
       <div class="hud-facts"><span id="hudRep">Reputation 50</span><span id="hudDay">Day 1</span></div>
+      <button id="infoBtn" class="info-btn" aria-label="How to play">i</button>
     </div>
     <div id="hudOffice" class="hud-office">Garage</div>
     <div class="daybar"><i id="hudDayFill"></i></div>
@@ -381,6 +392,47 @@
 </div>
 
 <div id="toast" class="toast" hidden></div>
+
+<div id="help" class="help" hidden>
+  <div class="help-top">
+    <h1>How Stackloom works</h1>
+    <button id="helpClose" class="btn primary">Got it</button>
+  </div>
+  <div class="help-body">
+    <div class="help-pitch">
+      <p>You run a game studio that pumps out knockoffs of knockoffs. Every game you sell is the same engine with a new skin slapped on it, built for whoever is paying.</p>
+      <p>Your security team hacks rival studios that are doing the exact same thing. Your lawyers sue those same rivals for making knockoffs.</p>
+      <p>That is the whole point. Keep the cash coming in long enough to see how far the hypocrisy goes.</p>
+    </div>
+
+    <h2>Orders and terminals</h2>
+    <p>Customers show up on the Orders tab wanting a themed game. Accept one, put it on a terminal, and the terminal builds it. When it is done you can play test it, then ship it and get paid. Late or buggy games pay less and cost reputation, and reputation brings in more customers.</p>
+
+    <h2>Staff</h2>
+    <p>Agents run terminals for you, accepting orders, building, and shipping, but they never play test. Devs supervise agents so builds go faster with fewer bugs. Everybody gets paid every night whether they did anything or not.</p>
+
+    <h2>Product lines</h2>
+    <p>Senior hires open new product lines, each one a new engine with a pile of skins: sudoku, bubble shooters, card games, lane runners, match three, pull out puzzles, energy and jobs games, crop timers, and vertical shooters. The Games tab keeps a sample of each so you can play what you are selling.</p>
+
+    <h2>The office</h2>
+    <p>Bigger offices hold more terminals and more staff, and cost more rent. Upgrades on the Office tab make the whole studio faster or cleaner.</p>
+
+    <h2>The market</h2>
+    <p>The industry moves under you. A new graphics card launches, a rival floods the market, a streamer makes one kind of game blow up, the app store raises its cut, the cloud goes down. Each one changes what customers order and what they pay. A rumor shows up on the Orders tab before the big ones hit, so plan for them.</p>
+
+    <h2>Vulnerabilities</h2>
+    <p>Now and then a CVE hits one of your engines and every game you shipped on it is exposed. That line freezes, free patch jobs pile up, unpatched games cost money every night, and anything still unpatched at the deadline gets fined and pulled from stores. Security engineers patch without using a terminal and make the whole mess cheaper.</p>
+
+    <h2>Mischief</h2>
+    <p>When your security engineers have nothing to patch, they dig up exploits in rival games. Leak one and the rival's customers come to you. Sell one to a broker for cash. Or report it like a good citizen for reputation. Leaking and selling build heat, and heat is your chance of getting caught.</p>
+
+    <h2>Lawyers</h2>
+    <p>Lawyers shrink every fine, soften the hit when you get caught, and cool off heat faster. When nothing is on fire, they send cease and desist letters to rivals over their lookalike games, and sometimes a settlement check comes back.</p>
+
+    <h2>How you lose</h2>
+    <p>End a day below zero and the top bar turns red. End too many days in a row below zero and the studio folds. Your run score counts revenue, games shipped, and reputation, minus the buggy games you pushed out the door, and your best runs are saved on the Office tab.</p>
+  </div>
+</div>
 
 <div id="fold" class="fold" hidden>
   <div class="fold-card">
@@ -692,7 +744,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3.6";
+const VERSION = "stackloom-meta v3.7";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -3146,6 +3198,7 @@ function doAction(action, id) {
     case "reset":
       if (Date.now() < resetArmedUntil) {
         company = newCompany();
+        company.seenHelp = true;
         resetArmedUntil = 0;
         currentTab = "orders";
         saveCompany();
@@ -7046,12 +7099,22 @@ setInterval(() => {
 
 document.getElementById("foldNew").addEventListener("click", () => {
   company = newCompany();
+  company.seenHelp = true;
   currentTab = "orders";
   saveCompany();
   document.getElementById("fold").hidden = true;
   render();
 });
 if (company.over) showFold(null);
+
+function openHelp() { document.getElementById("help").hidden = false; }
+document.getElementById("infoBtn").addEventListener("click", openHelp);
+document.getElementById("helpClose").addEventListener("click", () => {
+  document.getElementById("help").hidden = true;
+  company.seenHelp = true;
+  saveCompany();
+});
+if (!company.seenHelp && !company.over) openHelp();
 
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
