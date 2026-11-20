@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.9. Added marketing campaigns and a sales team with repeat clients.
+Latest change. 2026-11-20, v2026.11.20.10. Added raises and a carrot or stick management style.
 
 Full history is in CHANGELOG.md.

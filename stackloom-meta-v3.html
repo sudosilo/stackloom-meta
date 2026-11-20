@@ -56,8 +56,13 @@
   .perf { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
   .perf-meter { flex: 1; height: 8px; border-radius: 4px; background: #e6ecf5; overflow: hidden; }
   .perf-meter i { display: block; height: 100%; }
-  .perf-label { font-size: 12px; color: var(--muted); white-space: nowrap; width: 128px; font-variant-numeric: tabular-nums; }
-  .btn.fire { min-height: 34px; padding: 6px 10px; font-size: 13px; width: 92px; color: #d0584f; border-color: #e8b4ad; }
+  .perf-label { font-size: 12px; color: var(--muted); white-space: nowrap; width: 140px; text-align: right; font-variant-numeric: tabular-nums; }
+  .perf-actions { display: flex; gap: 8px; margin: 8px 0 2px; }
+  .perf-actions .btn { flex: 1; min-height: 36px; padding: 6px 10px; font-size: 13px; }
+  .btn.raise { color: #2463b0; border-color: #a9c3e6; }
+  .styles { display: flex; gap: 6px; margin-bottom: 8px; }
+  .styles .btn { flex: 1; }
+  .btn.fire { color: #d0584f; border-color: #e8b4ad; }
   .btn.fire.armed { background: #d0584f; color: #ffffff; border-color: #d0584f; }
   .floor .typing { animation: floorType 0.5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
   .floor .idle { animation: floorIdle 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
@@ -436,6 +441,9 @@
     <h2>The office</h2>
     <p>Bigger offices hold more terminals and more staff, and cost more rent. Upgrades on the Office tab make the whole studio faster or cleaner.</p>
 
+    <h2>Carrot or stick</h2>
+    <p>Pick a management style on the Team tab. Stick pays below market and runs on fear: performance slides faster, firing someone scares everyone else into working, and people at rock bottom quit. Carrot pays what people are worth: payroll climbs, but so does performance. Raises bump someone's pay and performance right away, with diminishing returns, because past a point no amount of money keeps a grown man child focused on his day job.</p>
+
     <h2>Marketing and sales</h2>
     <p>Marketers run ad campaigns that pump one product line for a few days, so you can ride a streamer craze harder or dig out of a rival's release. Salespeople get more money out of every order, keep customers waiting longer, and turn happy customers into repeat clients. Coffee is for closers, so the lobby coffee bar makes sales squeeze harder.</p>
 
@@ -769,7 +777,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3.11";
+const VERSION = "stackloom-meta v3.12";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -1946,6 +1954,50 @@ function setPerf(role, name, value) {
   if (!company.perf) company.perf = {};
   company.perf[role + ":" + name] = clamp(Math.round(value), 5, 100);
 }
+// Carrot or stick. Raises bump pay and performance, with diminishing
+// returns, because past a point money does not keep anyone focused. The
+// management style changes everybody's pay and how they react.
+const ROLE_SALARY = { agent: "agentSalary", dev: "devSalary", qa: "qaSalary", mgr: "mgrSalary", sec: "secSalary", law: "lawSalary", mkt: "mktSalary", sales: "salesSalary" };
+const STYLES = {
+  stick: { label: "Stick", pay: 0.85, drift: -3, text: "Pay below market and rule by fear. Performance slides faster, firing someone scares everyone else into working harder, and anyone who hits rock bottom might just quit." },
+  balanced: { label: "Balanced", pay: 1, drift: 0, text: "Market pay, no drama. Raises and firing work the normal way." },
+  carrot: { label: "Carrot", pay: 1.15, drift: 3, text: "Pay people what they are worth. Everybody costs more, performance climbs on its own, and raises hit a lot harder." }
+};
+function mgmtStyle() { return STYLES[company.style] || STYLES.balanced; }
+function payLevel(role, name) { return (company.pay || {})[role + ":" + name] || 0; }
+function salaryFor(role, name) { return Math.round(PRICES[ROLE_SALARY[role]] * (1 + 0.15 * payLevel(role, name)) * mgmtStyle().pay); }
+function payroll() {
+  return STAFF_ROLES.reduce((sum, r) => sum + (company[r.list] || []).reduce((t, name) => t + salaryFor(r.role, name), 0), 0);
+}
+const RAISE_LINES = [
+  "said thank you and meant it.", "called their mom about it.", "is pretending they are not excited.",
+  "bought everyone donuts with the first check."
+];
+const AGENT_RAISE_LINES = [
+  "got a bigger compute budget and stopped talking to itself.", "upgraded to a faster model and is weirdly smug about it.",
+  "now has more memory and remembers every slight."
+];
+const BIG_RAISE_LINES = [
+  "bought a drone with it. Focus unchanged.", "put it toward a second gaming chair.", "spent it on a course about passive income.",
+  "says money was never the problem, but thanks."
+];
+function giveRaise(id) {
+  const c = company;
+  const [role, idx] = String(id).split(":");
+  const r = STAFF_ROLES.find(x => x.role === role);
+  if (!r) return;
+  const name = (c[r.list] || [])[Number(idx)];
+  if (name == null) return;
+  const level = payLevel(role, name);
+  if (level >= 5) { showToast(r.title + " " + name + " is already the best paid " + r.title.toLowerCase() + " in the industry."); return; }
+  if (!c.pay) c.pay = {};
+  c.pay[role + ":" + name] = level + 1;
+  const bump = Math.round(16 * (c.style === "carrot" ? 1.5 : 1) / (1 + level * 0.6));
+  setPerf(role, name, getPerf(role, name) + bump);
+  if (role === "agent") notify("Agent " + name + " " + pick(AGENT_RAISE_LINES) + " Now costs " + cash(salaryFor(role, name)) + " a day.", true);
+  else notify("Gave " + r.title + " " + name + " a raise to " + cash(salaryFor(role, name)) + " a day. They " + pick(level >= 3 ? BIG_RAISE_LINES : RAISE_LINES), true);
+}
+
 function perfMult(role, name) { return 0.6 + getPerf(role, name) / 250; }
 function perfLabel(p, role) {
   if (role === "agent") return p >= 85 ? "Overclocked" : p >= 65 ? "Stable" : p >= 45 ? "Laggy" : p >= 25 ? "Throttling" : "Stuck in a loop";
@@ -1962,9 +2014,18 @@ const SLACK_LINES = [
 ];
 function drift() {
   const c = company;
+  if (c.style === "stick") STAFF_ROLES.forEach(r => {
+    const list = c[r.list] || [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (getPerf(r.role, list[i]) < 15 && Math.random() < 0.3) {
+        notify(r.title + " " + list[i] + " quit and took the stapler.", true);
+        list.splice(i, 1);
+      }
+    }
+  });
   STAFF_ROLES.forEach(r => (c[r.list] || []).forEach(name => {
     const before = getPerf(r.role, name);
-    const after = before + Math.random() * 20 - 12 + (c.upgrades.coffee ? 7 : 0);
+    const after = before + Math.random() * 20 - 12 + (c.upgrades.coffee ? 7 : 0) + mgmtStyle().drift + Math.min(payLevel(r.role, name), 3) * 2;
     setPerf(r.role, name, after);
     if (before >= 25 && getPerf(r.role, name) < 25) notify(r.title + " " + name + " " + pick(r.role === "agent" ? AGENT_SLACK_LINES : SLACK_LINES), true);
   }));
@@ -1974,9 +2035,12 @@ function perfHtml(role, name, index) {
   const id = role + ":" + index;
   const armed = fireArmed.id === id && Date.now() < fireArmed.until;
   const color = p >= 65 ? "#2463b0" : p >= 35 ? "#e0a33a" : "#d0584f";
+  const level = payLevel(role, name);
   return `<div class="perf"><div class="perf-meter"><i style="width:${p}%;background:${color}"></i></div>
-    <span class="perf-label">${perfLabel(p, role)}, ${p}</span>
-    <button class="btn fire ${armed ? "armed" : ""}" data-do="fire" data-id="${id}">${armed ? "Tap again" : "Fire"}</button></div>`;
+    <span class="perf-label">${perfLabel(p, role)}, ${p}</span></div>
+    <div class="perf-actions">
+      <button class="btn raise" data-do="raise" data-id="${id}" ${level >= 5 ? "disabled" : ""}>${level >= 5 ? "Maxed out" : (role === "agent" ? "More compute, " : "Raise to ") + cash(Math.round(PRICES[ROLE_SALARY[role]] * (1 + 0.15 * (level + 1)) * mgmtStyle().pay))}</button>
+      <button class="btn fire ${armed ? "armed" : ""}" data-do="fire" data-id="${id}">${armed ? "Tap again" : "Fire"}</button></div>`;
 }
 function fireStaff(id) {
   const c = company;
@@ -1995,7 +2059,8 @@ function fireStaff(id) {
   if (role === "qa") c.orders.forEach(o => { if (o.qa === name && o.status === "ready") { o.qa = null; o.qaT = 0; } });
   if (role === "sec") c.orders.forEach(o => { if (o.secBy === name && o.status === "building") { o.secBy = null; o.status = "queued"; o.progress = 0; } });
   const p = getPerf(role, name);
-  notify("Fired " + r.title + " " + name + ". " + (p < 35 ? "Nobody is surprised." : p >= 70 ? "The rest of the team is nervous now." : "Security walked them out with a box."), true);
+  if (c.style === "stick") STAFF_ROLES.forEach(x => (c[x.list] || []).forEach(n => setPerf(x.role, n, getPerf(x.role, n) + 8)));
+  notify("Fired " + r.title + " " + name + ". " + (c.style === "stick" ? "Everyone else suddenly looks very busy. " : "") + (p < 35 ? "Nobody is surprised." : p >= 70 ? "The rest of the team is nervous now." : "Security walked them out with a box."), true);
 }
 
 // ------------------------------------------------------------------
@@ -2801,7 +2866,7 @@ function payBills() {
   const c = company;
   const seniorPay = SENIORS.filter(x => c.seniors[x.key]).reduce((sum, x) => sum + x.salary, 0);
   const bills = (office().rent + c.terminals.length * PRICES.terminalUpkeep + (c.upgrades.coffee ? 25 : 0)) * eventMod("bills");
-  const salaries = (c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + (c.secs || []).length * PRICES.secSalary + (c.laws || []).length * PRICES.lawSalary + (c.qas || []).length * PRICES.qaSalary + (c.mgrs || []).length * PRICES.mgrSalary + (c.mkts || []).length * PRICES.mktSalary + (c.sales || []).length * PRICES.salesSalary + seniorPay) * eventMod("salaries");
+  const salaries = (payroll() + seniorPay) * eventMod("salaries");
   const bill = Math.round(bills + salaries);
   c.money -= bill;
   notify("Day " + (c.day - 1) + " ended. Rent, salaries, and upkeep cost " + cash(bill) + ".");
@@ -3175,7 +3240,11 @@ function renderTeam() {
   const c = company;
   const room = office();
 
-  let html = renderFloor() + `<h2 class="section-title spaced">Agents</h2>
+  const style = mgmtStyle();
+  let html = renderFloor() + `<h2 class="section-title spaced">Management style</h2>
+    <div class="styles">${Object.keys(STYLES).map(k => `<button class="btn ${(c.style || "balanced") === k ? "primary" : ""}" data-do="style" data-id="${k}">${STYLES[k].label}</button>`).join("")}</div>
+    <p class="note">${style.text} Payroll is ${cash(payroll())} a day.</p>
+    <h2 class="section-title spaced">Agents</h2>
     <p class="note">Agents are AI programs, not people. They live in the machine room as server racks, and each one runs up to three terminals by itself. It accepts orders, starts builds, and ships finished games. Agents never play test, so bugs go straight to customers.</p>`;
 
   if (!c.agents.length) html += `<p class="empty">No agents yet. For now you run every terminal by hand.</p>`;
@@ -3190,7 +3259,7 @@ function renderTeam() {
     const boss = a < c.devs.length * 3 ? ". Supervised by Dev " + c.devs[Math.floor(a / 3)] : "";
     html += `
       <div class="row">
-        <div class="row-top"><div class="row-name">Agent ${name}</div><div class="row-state">${cash(PRICES.agentSalary)} a day</div></div>
+        <div class="row-top"><div class="row-name">Agent ${name}</div><div class="row-state">${cash(salaryFor("agent", name))} a day</div></div>
         ${perfHtml("agent", name, a)}
         <div class="row-sub">${runs}${boss}</div>
       </div>`;
@@ -3213,7 +3282,7 @@ function renderTeam() {
     const text = team.length ? "Supervises " + team.join(", ") : "No agents to supervise yet. Hire more agents.";
     html += `
       <div class="row">
-        <div class="row-top"><div class="row-name">Dev ${name}</div><div class="row-state">${cash(PRICES.devSalary)} a day</div></div>
+        <div class="row-top"><div class="row-name">Dev ${name}</div><div class="row-state">${cash(salaryFor("dev", name))} a day</div></div>
         ${perfHtml("dev", name, d)}
         <div class="row-sub">${text}</div>
       </div>`;
@@ -3234,7 +3303,7 @@ function renderTeam() {
     const boss = qaManaged(t) ? ". Managed by " + qaManagerFor(t) + ", so twice as fast" : "";
     html += `
       <div class="row">
-        <div class="row-top"><div class="row-name">Tester ${name}</div><div class="row-state ${busy ? "busy" : ""}">${cash(PRICES.qaSalary)} a day</div></div>
+        <div class="row-top"><div class="row-name">Tester ${name}</div><div class="row-state ${busy ? "busy" : ""}">${cash(salaryFor("qa", name))} a day</div></div>
         ${perfHtml("qa", name, t)}
         <div class="row-sub">${busy ? "Play testing the " + lookFor(busy).label + " game for " + busy.customer : "Waiting for a finished build"}${boss}</div>
       </div>`;
@@ -3253,7 +3322,7 @@ function renderTeam() {
     const team = qas.slice(m * 3, m * 3 + 3).map(n => "Tester " + n);
     html += `
       <div class="row">
-        <div class="row-top"><div class="row-name">Manager ${name}</div><div class="row-state">${cash(PRICES.mgrSalary)} a day</div></div>
+        <div class="row-top"><div class="row-name">Manager ${name}</div><div class="row-state">${cash(salaryFor("mgr", name))} a day</div></div>
         ${perfHtml("mgr", name, m)}
         <div class="row-sub">${team.length ? "Manages " + team.join(", ") : "No testers to manage yet. Hire more testers."}</div>
       </div>`;
@@ -3273,7 +3342,7 @@ function renderTeam() {
     const busy = c.orders.find(o => o.patch && o.status === "building" && o.secBy === name);
     html += `
       <div class="row">
-        <div class="row-top"><div class="row-name">Security engineer ${name}</div><div class="row-state ${busy ? "busy" : ""}">${cash(PRICES.secSalary)} a day</div></div>
+        <div class="row-top"><div class="row-name">Security engineer ${name}</div><div class="row-state ${busy ? "busy" : ""}">${cash(salaryFor("sec", name))} a day</div></div>
         ${perfHtml("sec", name, si)}
         <div class="row-sub">${busy ? "Patching the " + lookFor(busy).label + " game for " + busy.customer : "Nothing to patch, so hunting for holes in rival games. Next find " + Math.min(99, Math.round((c.intel || 0) / INTEL_NEEDED * 100)) + " percent done."}</div>
         ${busy ? `<div class="bar"><i data-progress="${busy.id}"></i></div>` : ""}
@@ -3293,7 +3362,7 @@ function renderTeam() {
     const running = campaigns().find(a => a.by === name);
     html += `
       <div class="row">
-        <div class="row-top"><div class="row-name">Marketer ${name}</div><div class="row-state ${running ? "busy" : ""}">${cash(PRICES.mktSalary)} a day</div></div>
+        <div class="row-top"><div class="row-name">Marketer ${name}</div><div class="row-state ${running ? "busy" : ""}">${cash(salaryFor("mkt", name))} a day</div></div>
         ${perfHtml("mkt", name, mi)}
         <div class="row-sub">${running ? "Running the " + lineLabel(running.line) + " campaign until day " + running.until : "Free for a new campaign"}</div>
       </div>`;
@@ -3320,7 +3389,7 @@ function renderTeam() {
   sales.forEach((name, xi) => {
     html += `
       <div class="row">
-        <div class="row-top"><div class="row-name">Salesperson ${name}</div><div class="row-state">${cash(PRICES.salesSalary)} a day</div></div>
+        <div class="row-top"><div class="row-name">Salesperson ${name}</div><div class="row-state">${cash(salaryFor("sales", name))} a day</div></div>
         ${perfHtml("sales", name, xi)}
         <div class="row-sub">${c.upgrades.coffee ? "Drinking the good coffee and closing" : "Working the phones without coffee"}</div>
       </div>`;
@@ -3339,7 +3408,7 @@ function renderTeam() {
   laws.forEach((name, li) => {
     html += `
       <div class="row">
-        <div class="row-top"><div class="row-name">Lawyer ${name}</div><div class="row-state">${cash(PRICES.lawSalary)} a day</div></div>
+        <div class="row-top"><div class="row-name">Lawyer ${name}</div><div class="row-state">${cash(salaryFor("law", name))} a day</div></div>
         ${perfHtml("law", name, li)}
         <div class="row-sub">${(c.cves || []).length ? "Handling the vulnerability fallout" : "Mailing cease and desist letters to rivals"}</div>
       </div>`;
@@ -3612,6 +3681,12 @@ function doAction(action, id) {
         setPerf("sales", name, 55 + Math.random() * 40);
         notify("Hired Salesperson " + name + ". Always be closing.", true);
       }
+      break;
+    case "raise":
+      giveRaise(id);
+      break;
+    case "style":
+      if (STYLES[id]) { c.style = id; notify("Switched to " + STYLES[id].label.toLowerCase() + " management.", true); }
       break;
     case "fire":
       fireStaff(id);
