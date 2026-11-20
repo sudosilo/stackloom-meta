@@ -132,6 +132,8 @@
   .news-title { font-size: 15px; font-weight: 650; margin-top: 2px; }
   .news-text { font-size: 14px; color: var(--muted); line-height: 1.4; margin-top: 4px; }
   .news.cve { border-color: #d0584f; }
+  .news.heist { border-color: #8f6ee8; }
+  .news.heist .news-tag { color: #8f6ee8; }
   .news.cve .news-tag { color: #d0584f; }
   .prem.patch { background: #d0584f; }
   .hud-office { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -690,7 +692,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3.4";
+const VERSION = "stackloom-meta v3.5";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -1358,6 +1360,9 @@ const MARKET_EVENTS = [
   { id: "creator_fund", day: 52, days: 2, title: "A creator fund pays studios to make games for streamers",
     text: "Free grant money lands in the bank, and the streamers send customers your way.",
     grant: true, traffic: 1.3 },
+  { id: "rival_breach", day: -1, days: 3, title: "A rival game gets hacked",
+    text: "The rival's customers are shopping around. More customers show up and they pay a little more.",
+    traffic: 1.35, pay: { all: 1.1 } },
   { id: "indie_hit", day: 56, days: 4, title: "A tiny indie game sells millions",
     text: "Every investor wants a game studio now. Customers show up faster and pay a little more.",
     traffic: 1.5, pay: { all: 1.1 } }
@@ -1404,7 +1409,7 @@ function checkMarket() {
   if (scripted) { fireEvent(scripted); return; }
   if (c.day > LAST_SCRIPTED && c.day % 4 === 0) {
     const active = activeEvents().map(a => a.id);
-    fireEvent(pick(MARKET_EVENTS.filter(e => !active.includes(e.id))));
+    fireEvent(pick(MARKET_EVENTS.filter(e => e.day > 0 && !active.includes(e.id))));
   }
 }
 
@@ -1420,14 +1425,14 @@ function renderNews() {
     const d = eventDef(a.id);
     const left = a.until - c.day;
     html += `<div class="news"><div class="news-tag">Market news, ${left} ${plural(left, "day")} left</div>
-      <div class="news-title">${d.title}</div><div class="news-text">${d.text}</div></div>`;
+      <div class="news-title">${a.title || d.title}</div><div class="news-text">${d.text}</div></div>`;
   });
   const rumor = nextRumor();
   if (rumor) {
     html += `<div class="news rumor"><div class="news-tag">Rumor for day ${rumor.day}</div>
       <div class="news-title">${rumor.title}</div><div class="news-text">Word is this drops soon. Plan for it.</div></div>`;
   }
-  html = renderCves() + html;
+  html = renderCves() + renderExploits() + html;
   return html ? `<h2 class="section-title">Market</h2>` + html : "";
 }
 
@@ -1534,11 +1539,12 @@ function checkCves() {
 // make terminal patch builds go faster.
 function runSecurity(dt) {
   const c = company;
+  let idle = 0;
   (c.secs || []).forEach(name => {
     let order = c.orders.find(o => o.patch && o.status === "building" && o.secBy === name);
     if (!order) {
       order = c.orders.find(o => o.patch && o.status === "queued");
-      if (!order) return;
+      if (!order) { idle++; return; }
       order.status = "building";
       order.terminal = -1;
       order.secBy = name;
@@ -1552,6 +1558,84 @@ function runSecurity(dt) {
       dirty = true;
     }
   });
+  runMischief(dt, idle);
+}
+
+
+// ------------------------------------------------------------------
+// Mischief. Security engineers with nothing to patch go hunting for
+// holes in rival studios' games. Each find is a choice: leak it and
+// watch the rival's customers run to you, sell it to a broker for cash,
+// or report it for reputation. Leaking and selling build heat, and heat
+// is the chance of getting caught. Every studio and game here is made up.
+// ------------------------------------------------------------------
+const RIVALS = [
+  { name: "Gloomsoft", games: ["Block Empire 7", "Gloom Farms", "Tile Lords"] },
+  { name: "Tadpole Interactive", games: ["Frog Bounce Deluxe", "Pond Wars", "Tadpole Tycoon"] },
+  { name: "Megabyte Mills", games: ["Crush Saga Ultra", "Mega Match", "Byte Brawl"] },
+  { name: "Hollowpoint Games", games: ["Sky Sniper Online", "Hollow Run", "Duck Patrol"] }
+];
+const EXPLOIT_KINDS = ["a save file injection", "an unlimited coins glitch", "a login bypass", "a leaderboard takeover", "a remote crash", "a free premium unlock"];
+const INTEL_NEEDED = 55;
+
+function runMischief(dt, idle) {
+  const c = company;
+  if (!idle || (c.exploits || []).length >= 2) return;
+  c.intel = (c.intel || 0) + dt * idle;
+  if (c.intel < INTEL_NEEDED) return;
+  c.intel = 0;
+  const rival = pick(RIVALS);
+  const find = { id: "x" + c.nextId++, rival: rival.name, game: pick(rival.games), kind: pick(EXPLOIT_KINDS), day: c.day };
+  if (!c.exploits) c.exploits = [];
+  c.exploits.push(find);
+  notify("Your security team found " + find.kind + " in " + find.rival + "'s " + find.game + ". Decide what to do with it on the Orders tab.", true);
+}
+
+function heatCheck(add) {
+  const c = company;
+  c.heat = clamp((c.heat || 0) + add, 0, 90);
+  if (Math.random() * 100 >= c.heat) return false;
+  const fine = 500 + c.day * 20;
+  c.money -= fine;
+  c.reputation = clamp(c.reputation - 12, 0, 100);
+  c.heat = Math.round(c.heat / 2);
+  notify("Caught. A reporter traced the leak back to your studio. Lawyers cost " + cash(fine) + " and your reputation took a beating.", true);
+  return true;
+}
+
+function useExploit(choice, id) {
+  const c = company;
+  const find = (c.exploits || []).find(x => x.id === id);
+  if (!find) return;
+  c.exploits = c.exploits.filter(x => x !== find);
+  if (choice === "leak") {
+    c.events = (c.events || []).filter(a => a.id !== "rival_breach" || c.day >= a.until);
+    c.events.push({ id: "rival_breach", until: c.day + 3, title: find.game + " gets hacked and " + find.rival + " customers bail" });
+    notify("Leaked " + find.kind + " in " + find.game + ". Their players are furious and their customers are shopping around.", true);
+    heatCheck(30);
+  } else if (choice === "sell") {
+    const take = 400 + c.day * 25;
+    c.money += take;
+    notify("Sold the " + find.game + " exploit to a broker for " + cash(take) + ". Nobody asked questions. Yet.", true);
+    heatCheck(20);
+  } else {
+    c.reputation = clamp(c.reputation + 5, 0, 100);
+    c.money += 150;
+    c.heat = clamp((c.heat || 0) - 15, 0, 90);
+    notify("Reported the " + find.game + " hole to " + find.rival + ". They paid a small bounty and the press loved it.", true);
+  }
+}
+
+function renderExploits() {
+  const c = company;
+  return (c.exploits || []).map(x => `<div class="news heist"><div class="news-tag">Exploit found, heat ${Math.round(c.heat || 0)}</div>
+    <div class="news-title">${x.kind[0].toUpperCase() + x.kind.slice(1)} in ${x.rival}'s ${x.game}</div>
+    <div class="news-text">Leak it and their customers come to you for a few days. Sell it to a broker for cash. Or report it for reputation and a small bounty. Leaking and selling raise heat, and heat is your chance of getting caught.</div>
+    <div class="actions">
+      <button class="btn primary" data-do="exploit" data-id="leak:${x.id}">Leak it</button>
+      <button class="btn" data-do="exploit" data-id="sell:${x.id}">Sell it</button>
+      <button class="btn" data-do="exploit" data-id="report:${x.id}">Report it</button>
+    </div></div>`).join("");
 }
 
 function finishPatch(order) {
@@ -1659,7 +1743,7 @@ function newCompany() {
     terminals: [{ job: null }], agents: [], devs: [], seniors: {}, upgrades: {},
     orders: [], catalog: [], nextId: 1, offerTimer: 2,
     shipped: 0, bugsShipped: 0, log: [],
-    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: [], secs: []
+    earned: 0, debtDays: 0, over: false, events: [], fired: [], cves: [], secs: [], intel: 0, exploits: [], heat: 0
   };
 }
 
@@ -2446,6 +2530,7 @@ function payBills() {
   c.money -= bill;
   notify("Day " + (c.day - 1) + " ended. Rent, salaries, and upkeep cost " + cash(bill) + ".");
   checkCves();
+  c.heat = Math.max(0, (c.heat || 0) - 5);
   checkDebt();
   if (!c.over) { checkMarket(); maybeCve(); }
 }
@@ -2711,7 +2796,7 @@ function renderTeam() {
   html += `<p class="quiet">${c.devs.length} of ${room.devs} dev ${plural(room.devs, "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced">Security engineers</h2>
-    <p class="note">Security engineers handle vulnerabilities. Each one patches exposed games on their own without a terminal, makes terminal patch builds faster, shrinks patch jobs, and cuts the nightly liability on unpatched games. Having any on staff buys an extra day before a CVE deadline.</p>`;
+    <p class="note">Security engineers handle vulnerabilities. Each one patches exposed games on their own without a terminal, makes terminal patch builds faster, shrinks patch jobs, and cuts the nightly liability on unpatched games. Having any on staff buys an extra day before a CVE deadline. With nothing to patch, they dig for exploits in rival studios' games. Heat is ${Math.round(c.heat || 0)} out of 100.</p>`;
   const secs = c.secs || [];
   if (!secs.length) html += `<p class="empty">No security engineers yet. A vulnerability will land on the terminals.</p>`;
   secs.forEach(name => {
@@ -2719,7 +2804,7 @@ function renderTeam() {
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">Security engineer ${name}</div><div class="row-state ${busy ? "busy" : ""}">${cash(PRICES.secSalary)} a day</div></div>
-        <div class="row-sub">${busy ? "Patching the " + lookFor(busy).label + " game for " + busy.customer : "Watching the feeds. Nothing to patch."}</div>
+        <div class="row-sub">${busy ? "Patching the " + lookFor(busy).label + " game for " + busy.customer : "Nothing to patch, so hunting for holes in rival games. Next find " + Math.min(99, Math.round((c.intel || 0) / INTEL_NEEDED * 100)) + " percent done."}</div>
         ${busy ? `<div class="bar"><i data-progress="${busy.id}"></i></div>` : ""}
       </div>`;
   });
@@ -2962,6 +3047,11 @@ function doAction(action, id) {
         notify("Hired Dev " + name + ".", true);
       }
       break;
+    case "exploit": {
+      const [choice, xid] = String(id).split(":");
+      useExploit(choice, xid);
+      break;
+    }
     case "hireSec":
       if (!c.secs) c.secs = [];
       if (c.secs.length >= SEC_SEATS[c.officeLevel]) showToast("No free security seats. Move to a bigger office.");

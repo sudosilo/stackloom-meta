@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.2. Added security engineers who patch vulnerabilities and soften their cost.
+Latest change. 2026-11-20, v2026.11.20.3. Idle security engineers find exploits in rival games to leak, sell, or report.
 
 Full history is in CHANGELOG.md.
