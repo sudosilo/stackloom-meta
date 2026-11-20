@@ -50,6 +50,15 @@
   .floor { margin-bottom: 8px; }
   .floor-name { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2463b0; margin: 0 2px 6px; }
   .floor svg { display: block; font-family: inherit; }
+  .floor .screen { animation: floorScreen 1.1s steps(2) infinite; }
+  .floor .led { animation: floorScreen 0.4s steps(2) infinite; }
+  @keyframes floorScreen { 50% { opacity: 0.55; } }
+  .perf { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .perf-meter { flex: 1; height: 8px; border-radius: 4px; background: #e6ecf5; overflow: hidden; }
+  .perf-meter i { display: block; height: 100%; }
+  .perf-label { font-size: 12px; color: var(--muted); white-space: nowrap; width: 128px; font-variant-numeric: tabular-nums; }
+  .btn.fire { min-height: 34px; padding: 6px 10px; font-size: 13px; width: 92px; color: #d0584f; border-color: #e8b4ad; }
+  .btn.fire.armed { background: #d0584f; color: #ffffff; border-color: #d0584f; }
   .floor .typing { animation: floorType 0.5s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
   .floor .idle { animation: floorIdle 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
   @keyframes floorType { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.2px); } }
@@ -416,13 +425,16 @@
     <p>Customers show up on the Orders tab wanting a themed game. Accept one, put it on a terminal, and the terminal builds it. When it is done you can play test it, then ship it and get paid. Late or buggy games pay less and cost reputation, and reputation brings in more customers.</p>
 
     <h2>Staff</h2>
-    <p>Agents run terminals for you, accepting orders, building, and shipping, but they never play test. Devs supervise agents so builds go faster with fewer bugs. Game testers play every finished build, fix most bugs, and ship it for you, and managers make their testers faster and sharper. Everybody gets paid every night whether they did anything or not.</p>
+    <p>Terminals are the machines that build games. Agents are AI programs, each one running up to three terminals by itself, accepting orders, building, and shipping, but they never play test. Devs are people who supervise up to three agents each, so builds go faster with fewer bugs. Everybody with a paycheck has a performance meter that slides unless the lobby has coffee, slackers work slower, and you can fire anyone from the Team tab. Game testers play every finished build, fix most bugs, and ship it for you, and managers make their testers faster and sharper. Everybody gets paid every night whether they did anything or not.</p>
 
     <h2>Product lines</h2>
     <p>Senior hires open new product lines, each one a new engine with a pile of skins: sudoku, bubble shooters, card games, lane runners, match three, pull out puzzles, energy and jobs games, crop timers, and vertical shooters. The Games tab keeps a sample of each so you can play what you are selling.</p>
 
     <h2>The office</h2>
     <p>Bigger offices hold more terminals and more staff, and cost more rent. Upgrades on the Office tab make the whole studio faster or cleaner.</p>
+
+    <h2>Game Smash parties</h2>
+    <p>Every so often the office throws a hackathon. For a day everybody builds much faster on pizza and energy drinks and customers show up for the buzz, but the catering bill hits up front and tired people write more bugs. A rumor warns you a day or two ahead.</p>
 
     <h2>The market</h2>
     <p>The industry moves under you. A new graphics card launches, a rival floods the market, a streamer makes one kind of game blow up, the app store raises its cut, the cloud goes down. Each one changes what customers order and what they pay. A rumor shows up on the Orders tab before the big ones hit, so plan for them.</p>
@@ -751,7 +763,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3.9";
+const VERSION = "stackloom-meta v3.10";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -1319,6 +1331,8 @@ const UPGRADES = [
     text: "Automatic checks run the moment a build finishes and catch most bugs before anyone plays the game." },
   { key: "engine", name: "Shared engine", cost: 3000,
     text: "Every game runs on one engine and only the theme file changes, so nothing gets copied. Builds go faster." },
+  { key: "coffee", name: "Lobby coffee bar", cost: 900,
+    text: "Coffee is for closers, and everybody here thinks they are one. Performance climbs a little every night instead of sliding, for every employee. Costs $25 a day to keep stocked." },
   { key: "generator", name: "Theme generator", cost: 6000,
     text: "Terminals write theme files from a short description instead of by hand. Builds go faster and customers pay more." }
 ];
@@ -1429,6 +1443,9 @@ const MARKET_EVENTS = [
   { id: "rival_breach", day: -1, days: 3, title: "A rival game gets hacked",
     text: "The rival's customers are shopping around. More customers show up and they pay a little more.",
     traffic: 1.35, pay: { all: 1.1 } },
+  { id: "smash", day: -1, days: 1, title: "Game Smash party",
+    text: "A hackathon in the office. Everybody builds a lot faster on pizza and energy drinks, the catering bill lands up front, tired people write more bugs, and the buzz brings in customers.",
+    speed: 1.6, bugs: 1.4, traffic: 1.3, smash: true, rep: 2 },
   { id: "indie_hit", day: 56, days: 4, title: "A tiny indie game sells millions",
     text: "Every investor wants a game studio now. Customers show up faster and pay a little more.",
     traffic: 1.5, pay: { all: 1.1 } }
@@ -1466,22 +1483,34 @@ function fireEvent(d) {
   if (d.rep) c.reputation = clamp(c.reputation + d.rep, 0, 100);
   if (d.moneyPct && c.money > 0) c.money -= Math.round(c.money * -d.moneyPct);
   if (d.grant) c.money += 300 + c.day * 15;
+  if (d.smash) c.money -= smashCost();
   notify("Market news. " + d.title + ". " + d.text, true);
 }
 
+function smashDay(day) { return day % 8 === 5; }
+function smashCost() {
+  const c = company;
+  const heads = STAFF_ROLES.reduce((n, r) => n + (c[r.list] || []).length, 0) + Object.keys(c.seniors).length + 1;
+  return 60 + heads * 25;
+}
 function checkMarket() {
   const c = company;
+  if (smashDay(c.day)) fireEvent(eventDef("smash"));
   const scripted = MARKET_EVENTS.find(e => e.day === c.day && !(c.fired || []).includes(e.id));
   if (scripted) { fireEvent(scripted); return; }
   if (c.day > LAST_SCRIPTED && c.day % 4 === 0) {
     const active = activeEvents().map(a => a.id);
-    fireEvent(pick(MARKET_EVENTS.filter(e => e.day > 0 && !active.includes(e.id))));
+    fireEvent(pick(MARKET_EVENTS.filter(e => e.day > 0 && !e.smash && !active.includes(e.id))));
   }
 }
 
 function nextRumor() {
   const c = company;
-  return MARKET_EVENTS.find(e => e.day > c.day && e.day <= c.day + 2 && !(c.fired || []).includes(e.id));
+  const scripted = MARKET_EVENTS.find(e => e.day > c.day && e.day <= c.day + 2 && !(c.fired || []).includes(e.id));
+  if (scripted) return scripted;
+  const d = [c.day + 1, c.day + 2].find(smashDay);
+  if (d) return Object.assign({}, eventDef("smash"), { day: d, title: "Game Smash party, catering about " + cash(smashCost()) });
+  return null;
 }
 
 function renderNews() {
@@ -1635,7 +1664,7 @@ function runSecurity(dt) {
       order.progress = 0;
       dirty = true;
     }
-    order.progress += dt * 1.5;
+    order.progress += dt * 1.5 * perfMult("sec", name);
     if (order.progress >= order.work) {
       order.progress = order.work;
       finishPatch(order);
@@ -1848,6 +1877,77 @@ let company = loadCompany();
 let dirty = true;
 let currentTab = "orders";
 let resetArmedUntil = 0;
+let fireArmed = { id: null, until: 0 };
+
+// ------------------------------------------------------------------
+// Performance. Every employee has a meter. It drifts down a little each
+// night unless the lobby has coffee, and a slacker works slower. Fire
+// anyone you want from the Team tab.
+// ------------------------------------------------------------------
+const STAFF_ROLES = [
+  { role: "agent", list: "agents", title: "Agent" }, { role: "dev", list: "devs", title: "Dev" },
+  { role: "qa", list: "qas", title: "Tester" }, { role: "mgr", list: "mgrs", title: "Manager" },
+  { role: "sec", list: "secs", title: "Security engineer" }, { role: "law", list: "laws", title: "Lawyer" }
+];
+function getPerf(role, name) {
+  const p = (company.perf || {})[role + ":" + name];
+  return p == null ? 70 : p;
+}
+function setPerf(role, name, value) {
+  if (!company.perf) company.perf = {};
+  company.perf[role + ":" + name] = clamp(Math.round(value), 5, 100);
+}
+function perfMult(role, name) { return 0.6 + getPerf(role, name) / 250; }
+function perfLabel(p, role) {
+  if (role === "agent") return p >= 85 ? "Overclocked" : p >= 65 ? "Stable" : p >= 45 ? "Laggy" : p >= 25 ? "Throttling" : "Stuck in a loop";
+  return p >= 85 ? "On fire" : p >= 65 ? "Solid" : p >= 45 ? "Coasting" : p >= 25 ? "Slacking" : "Asleep at the desk"; }
+const AGENT_SLACK_LINES = [
+  "got stuck in a retry loop and has been apologizing to itself all day.", "started mining crypto on the side.",
+  "rewrote its own instructions to be more relaxing.", "keeps asking the terminals how they feel about their work.",
+  "has been generating poetry instead of theme files."
+];
+const SLACK_LINES = [
+  "has been watching cooking videos all afternoon.", "took a three hour lunch and came back with a smoothie.",
+  "is reorganizing their desk for the fourth time today.", "has been on hold with their cable company since lunch.",
+  "renamed every file in the repo to something about soup.", "is updating their resume on a work machine."
+];
+function drift() {
+  const c = company;
+  STAFF_ROLES.forEach(r => (c[r.list] || []).forEach(name => {
+    const before = getPerf(r.role, name);
+    const after = before + Math.random() * 20 - 12 + (c.upgrades.coffee ? 7 : 0);
+    setPerf(r.role, name, after);
+    if (before >= 25 && getPerf(r.role, name) < 25) notify(r.title + " " + name + " " + pick(r.role === "agent" ? AGENT_SLACK_LINES : SLACK_LINES), true);
+  }));
+}
+function perfHtml(role, name, index) {
+  const p = getPerf(role, name);
+  const id = role + ":" + index;
+  const armed = fireArmed.id === id && Date.now() < fireArmed.until;
+  const color = p >= 65 ? "#2463b0" : p >= 35 ? "#e0a33a" : "#d0584f";
+  return `<div class="perf"><div class="perf-meter"><i style="width:${p}%;background:${color}"></i></div>
+    <span class="perf-label">${perfLabel(p, role)}, ${p}</span>
+    <button class="btn fire ${armed ? "armed" : ""}" data-do="fire" data-id="${id}">${armed ? "Tap again" : "Fire"}</button></div>`;
+}
+function fireStaff(id) {
+  const c = company;
+  const [role, idx] = String(id).split(":");
+  const r = STAFF_ROLES.find(x => x.role === role);
+  if (!r) return;
+  const list = c[r.list] || [];
+  const name = list[Number(idx)];
+  if (name == null) return;
+  if (fireArmed.id !== id || Date.now() > fireArmed.until) {
+    fireArmed = { id: id, until: Date.now() + 4000 };
+    return;
+  }
+  fireArmed = { id: null, until: 0 };
+  list.splice(Number(idx), 1);
+  if (role === "qa") c.orders.forEach(o => { if (o.qa === name && o.status === "ready") { o.qa = null; o.qaT = 0; } });
+  if (role === "sec") c.orders.forEach(o => { if (o.secBy === name && o.status === "building") { o.secBy = null; o.status = "queued"; o.progress = 0; } });
+  const p = getPerf(role, name);
+  notify("Fired " + r.title + " " + name + ". " + (p < 35 ? "Nobody is surprised." : p >= 70 ? "The rest of the team is nervous now." : "Security walked them out with a box."), true);
+}
 
 // ------------------------------------------------------------------
 // Who runs what. Agents take terminals three at a time, in order.
@@ -1864,13 +1964,14 @@ function terminalSpeed(i) {
   let speed = 1;
   if (company.upgrades.engine) speed *= 1.3;
   if (company.upgrades.generator) speed *= 1.2;
-  if (isBoosted(i)) speed *= 1.25;
+  if (isBoosted(i)) speed *= 1.25 * perfMult("dev", devFor(i));
+  if (isManaged(i)) speed *= perfMult("agent", agentFor(i));
   speed *= eventMod("speed");
   return speed;
 }
 
 function bugChance(i) {
-  let chance = 0.35;
+  let chance = 0.35 * eventMod("bugs");
   if (company.upgrades.schema) chance -= 0.15;
   if (isBoosted(i)) chance -= 0.1;
   return Math.max(0.04, chance);
@@ -2595,7 +2696,7 @@ function runQA(dt) {
       dirty = true;
     }
     const managed = qaManaged(t);
-    order.qaT += dt * (managed ? 2 : 1);
+    order.qaT += dt * (managed ? 2 * perfMult("mgr", qaManagerFor(t)) : 1) * perfMult("qa", name);
     if (order.qaT < QA_SECONDS) return;
     if (order.bug && Math.random() < (managed ? 0.95 : 0.75)) {
       order.bug = null;
@@ -2640,12 +2741,13 @@ function runAgents() {
 function payBills() {
   const c = company;
   const seniorPay = SENIORS.filter(x => c.seniors[x.key]).reduce((sum, x) => sum + x.salary, 0);
-  const bills = (office().rent + c.terminals.length * PRICES.terminalUpkeep) * eventMod("bills");
+  const bills = (office().rent + c.terminals.length * PRICES.terminalUpkeep + (c.upgrades.coffee ? 25 : 0)) * eventMod("bills");
   const salaries = (c.agents.length * PRICES.agentSalary + c.devs.length * PRICES.devSalary + (c.secs || []).length * PRICES.secSalary + (c.laws || []).length * PRICES.lawSalary + (c.qas || []).length * PRICES.qaSalary + (c.mgrs || []).length * PRICES.mgrSalary + seniorPay) * eventMod("salaries");
   const bill = Math.round(bills + salaries);
   c.money -= bill;
   notify("Day " + (c.day - 1) + " ended. Rent, salaries, and upkeep cost " + cash(bill) + ".");
   checkCves();
+  drift();
   c.heat = Math.max(0, (c.heat || 0) - 5);
   runLawyers();
   checkDebt();
@@ -2879,8 +2981,7 @@ function floorPods() {
   const hiredSeniors = SENIORS.filter(x => c.seniors[x.key]);
   const lockedAt = key => { const i = OFFICES.findIndex(o => o[key] > 0); return i >= 0 ? OFFICES[i].name.toLowerCase() : ""; };
   return [
-    { name: "Agent pod", kind: "agent", color: "#2463b0", seats: room.agents,
-      people: c.agents.map((n, a) => ({ name: "Agent " + n, busy: agentBusy(a) })) },
+    { name: "Machine room", kind: "machines", color: "#2463b0", wide: true, seats: 0, people: [] },
     { name: "Dev pod", kind: "dev", color: "#2fa38f", seats: room.devs, locked: room.devs === 0 ? lockedAt("devs") : "",
       people: c.devs.map((n, d) => ({ name: "Dev " + n, busy: [0, 1, 2].some(k => agentBusy(d * 3 + k)) })) },
     { name: "Hacker pod", kind: "sec", color: "#5b4bdb", seats: SEC_SEATS[L],
@@ -2918,6 +3019,7 @@ function floorPerson(x, y, p, kind, color) {
 function renderFloor() {
   const c = company, L = c.officeLevel;
   const cubes = L >= 2, D = 46, COLS = 3, PAD = 8, LABEL = 22;
+  const agentBusy = a => c.terminals.slice(a * 3, a * 3 + 3).some(t => t.job != null);
   const floorColor = ["#e6e1d8", "#f1e6d3", "#e3e9f0", "#e1eaf4"][L];
   const deskColor = L === 0 ? "#b98c5e" : L === 1 ? "#c9a27a" : "#d5dbe2";
   const pods = floorPods();
@@ -2926,6 +3028,40 @@ function renderFloor() {
   let x = PAD, y = PAD, rowH = 0, col = 0, body = "";
 
   pods.forEach(pod => {
+    if (pod.kind === "machines") {
+      const room = office(), width = W - PAD * 2;
+      const rows = Math.max(1, Math.ceil(room.terminals / 3));
+      const RH = 40, h = LABEL + rows * RH + PAD;
+      body += `<rect x="${x}" y="${y}" width="${width}" height="${h}" rx="8" fill="#ffffff" fill-opacity="0.55" stroke="${pod.color}" stroke-width="2"/>`;
+      body += `<text x="${x + 8}" y="${y + 15}" font-size="11" font-weight="700" fill="${pod.color}">MACHINE ROOM</text>`;
+      body += `<text x="${x + width - 8}" y="${y + 15}" font-size="10" text-anchor="end" fill="#6b7785">${c.agents.length} of ${room.agents} agents, ${c.terminals.length} of ${room.terminals} terminals</text>`;
+      for (let r = 0; r < rows; r++) {
+        const ry = y + LABEL + r * RH, rx = x + 10;
+        const agent = c.agents[r];
+        const terms = [0, 1, 2].map(k => r * 3 + k).filter(i => i < room.terminals);
+        const ownedHere = terms.filter(i => i < c.terminals.length).length;
+        if (agent && ownedHere) body += `<line x1="${rx + 30}" y1="${ry + 17}" x2="${rx + 44 + ownedHere * 50 - 14}" y2="${ry + 17}" stroke="#2463b0" stroke-width="2" stroke-dasharray="4 3"/>`;
+        if (agent) {
+          body += `<g><title>Agent ${agent}, an AI program running these terminals</title><rect x="${rx}" y="${ry + 2}" width="30" height="30" rx="3" fill="#3a3f47" stroke="#1c2833"/>`;
+          [0, 1, 2].forEach(k => { body += `<rect x="${rx + 4}" y="${ry + 6 + k * 9}" width="22" height="5" rx="1" fill="#5b6570"/><circle class="${agentBusy(r) ? "led" : ""}" cx="${rx + 22}" cy="${ry + 8.5 + k * 9}" r="1.6" fill="${agentBusy(r) ? "#2fb4e6" : "#6bb34a"}"/>`; });
+          body += `<text x="${rx + 15}" y="${ry + 39}" font-size="7" font-weight="700" text-anchor="middle" fill="#2463b0">${agent}</text></g>`;
+        } else if (r < room.agents) {
+          body += `<rect x="${rx}" y="${ry + 2}" width="30" height="32" rx="3" fill="none" stroke="#9aa9b8" stroke-dasharray="3 2"/><text x="${rx + 15}" y="${ry + 22}" font-size="10" font-weight="700" text-anchor="middle" fill="#7d8b99">+</text>`;
+        } else {
+          body += `<rect x="${rx}" y="${ry + 2}" width="30" height="32" rx="3" fill="url(#hatch)"/>`;
+        }
+        terms.forEach((ti, k) => {
+          const tx = rx + 44 + k * 50, owned = ti < c.terminals.length;
+          const job = owned && c.terminals[ti].job != null;
+          body += `<g><title>Terminal ${ti + 1}</title><rect x="${tx}" y="${ry + 3}" width="38" height="26" rx="3" fill="${owned ? "#dfe5ec" : "none"}" stroke="${owned ? "#1c2833" : "#9aa9b8"}" ${owned ? "" : 'stroke-dasharray="3 2"'}/>`;
+          if (owned) body += `<rect class="${job ? "screen" : ""}" x="${tx + 3}" y="${ry + 6}" width="32" height="18" rx="1" fill="${job ? "#2463b0" : "#9aa9b8"}"/><rect x="${tx + 15}" y="${ry + 29}" width="8" height="4" fill="#7d8b99"/>`;
+          else body += `<text x="${tx + 19}" y="${ry + 21}" font-size="10" font-weight="700" text-anchor="middle" fill="#7d8b99">+</text>`;
+          body += `</g>`;
+        });
+      }
+      y += h + PAD; x = PAD; col = 0; rowH = 0;
+      return;
+    }
     const width = pod.wide ? W - PAD * 2 : podW;
     const cols = pod.wide ? Math.floor((width - PAD * 2) / D) : COLS;
     if (pod.wide && col === 1) { x = PAD; y += rowH + PAD; rowH = 0; col = 0; }
@@ -2954,8 +3090,14 @@ function renderFloor() {
     else { col = 0; x = PAD; y += Math.max(rowH, h) + PAD; rowH = 0; }
   });
   if (col === 1) y += rowH + PAD;
-  if (L === 3) body += `<text x="${W - 16}" y="${y - 4}" font-size="16" text-anchor="end">🪴</text><text x="16" y="${y - 4}" font-size="16">🪴</text>`;
-  const H = y + (L === 3 ? 16 : 0);
+  if (c.upgrades.coffee) {
+    body += `<g><title>Lobby coffee bar</title><rect x="${PAD}" y="${y}" width="${W - PAD * 2}" height="30" rx="8" fill="#f6efe0" stroke="#8b6b3d" stroke-width="2"/>
+      <text x="${PAD + 10}" y="${y + 20}" font-size="15">☕</text><text x="${PAD + 32}" y="${y + 19}" font-size="11" font-weight="700" fill="#8b6b3d">LOBBY COFFEE BAR</text>
+      <text x="${W - PAD - 10}" y="${y + 19}" font-size="10" text-anchor="end" fill="#2463b0">coffee is for closers</text></g>`;
+    y += 30 + PAD;
+  }
+  if (L === 3) body += `<text x="${W - 16}" y="${y + 12}" font-size="16" text-anchor="end">🪴</text><text x="16" y="${y + 12}" font-size="16">🪴</text>`;
+  const H = y + (L === 3 ? 20 : 0);
   return `<div class="floor"><div class="floor-name">${office().name}, top down</div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Office floor plan">
       <defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#eef1f4"/><line x1="0" y1="0" x2="0" y2="6" stroke="#cfd6de" stroke-width="3"/></pattern></defs>
@@ -2969,7 +3111,7 @@ function renderTeam() {
   const room = office();
 
   let html = renderFloor() + `<h2 class="section-title spaced">Agents</h2>
-    <p class="note">An agent runs up to three terminals by itself. It accepts orders, starts builds, and ships finished games. Agents never play test, so bugs go straight to customers.</p>`;
+    <p class="note">Agents are AI programs, not people. They live in the machine room as server racks, and each one runs up to three terminals by itself. It accepts orders, starts builds, and ships finished games. Agents never play test, so bugs go straight to customers.</p>`;
 
   if (!c.agents.length) html += `<p class="empty">No agents yet. For now you run every terminal by hand.</p>`;
 
@@ -2984,6 +3126,7 @@ function renderTeam() {
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">Agent ${name}</div><div class="row-state">${cash(PRICES.agentSalary)} a day</div></div>
+        ${perfHtml("agent", name, a)}
         <div class="row-sub">${runs}${boss}</div>
       </div>`;
   });
@@ -3006,6 +3149,7 @@ function renderTeam() {
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">Dev ${name}</div><div class="row-state">${cash(PRICES.devSalary)} a day</div></div>
+        ${perfHtml("dev", name, d)}
         <div class="row-sub">${text}</div>
       </div>`;
   });
@@ -3026,6 +3170,7 @@ function renderTeam() {
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">Tester ${name}</div><div class="row-state ${busy ? "busy" : ""}">${cash(PRICES.qaSalary)} a day</div></div>
+        ${perfHtml("qa", name, t)}
         <div class="row-sub">${busy ? "Play testing the " + lookFor(busy).label + " game for " + busy.customer : "Waiting for a finished build"}${boss}</div>
       </div>`;
   });
@@ -3044,6 +3189,7 @@ function renderTeam() {
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">Manager ${name}</div><div class="row-state">${cash(PRICES.mgrSalary)} a day</div></div>
+        ${perfHtml("mgr", name, m)}
         <div class="row-sub">${team.length ? "Manages " + team.join(", ") : "No testers to manage yet. Hire more testers."}</div>
       </div>`;
   });
@@ -3058,11 +3204,12 @@ function renderTeam() {
     <p class="note">Security engineers handle vulnerabilities. Each one patches exposed games on their own without a terminal, makes terminal patch builds faster, shrinks patch jobs, and cuts the nightly liability on unpatched games. Having any on staff buys an extra day before a CVE deadline. With nothing to patch, they dig for exploits in rival studios' games. Heat is ${Math.round(c.heat || 0)} out of 100.</p>`;
   const secs = c.secs || [];
   if (!secs.length) html += `<p class="empty">No security engineers yet. A vulnerability will land on the terminals.</p>`;
-  secs.forEach(name => {
+  secs.forEach((name, si) => {
     const busy = c.orders.find(o => o.patch && o.status === "building" && o.secBy === name);
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">Security engineer ${name}</div><div class="row-state ${busy ? "busy" : ""}">${cash(PRICES.secSalary)} a day</div></div>
+        ${perfHtml("sec", name, si)}
         <div class="row-sub">${busy ? "Patching the " + lookFor(busy).label + " game for " + busy.customer : "Nothing to patch, so hunting for holes in rival games. Next find " + Math.min(99, Math.round((c.intel || 0) / INTEL_NEEDED * 100)) + " percent done."}</div>
         ${busy ? `<div class="bar"><i data-progress="${busy.id}"></i></div>` : ""}
       </div>`;
@@ -3077,10 +3224,11 @@ function renderTeam() {
     <p class="note">Lawyers shrink every fine and legal bill, soften the reputation hit when the studio gets caught, and cool off heat faster each night. When there is no vulnerability open, they send cease and desist letters to rivals and sometimes a settlement check comes back.</p>`;
   const laws = c.laws || [];
   if (!laws.length) html += `<p class="empty">No lawyers yet. Fines land at full price.</p>`;
-  laws.forEach(name => {
+  laws.forEach((name, li) => {
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">Lawyer ${name}</div><div class="row-state">${cash(PRICES.lawSalary)} a day</div></div>
+        ${perfHtml("law", name, li)}
         <div class="row-sub">${(c.cves || []).length ? "Handling the vulnerability fallout" : "Mailing cease and desist letters to rivals"}</div>
       </div>`;
   });
@@ -3312,6 +3460,7 @@ function doAction(action, id) {
       else if (spend(PRICES.agent)) {
         const name = AGENT_NAMES[c.agents.length % AGENT_NAMES.length];
         c.agents.push(name);
+        setPerf("agent", name, 55 + Math.random() * 40);
         notify("Hired Agent " + name + ".", true);
       }
       break;
@@ -3320,6 +3469,7 @@ function doAction(action, id) {
       else if (spend(PRICES.dev)) {
         const name = DEV_NAMES[c.devs.length % DEV_NAMES.length];
         c.devs.push(name);
+        setPerf("dev", name, 55 + Math.random() * 40);
         notify("Hired Dev " + name + ".", true);
       }
       break;
@@ -3328,12 +3478,16 @@ function doAction(action, id) {
       useExploit(choice, xid);
       break;
     }
+    case "fire":
+      fireStaff(id);
+      break;
     case "hireQa":
       if (!c.qas) c.qas = [];
       if (c.qas.length >= QA_SEATS[c.officeLevel]) showToast("No free tester seats. Move to a bigger office.");
       else if (spend(PRICES.qa)) {
         const name = QA_NAMES[c.qas.length % QA_NAMES.length];
         c.qas.push(name);
+        setPerf("qa", name, 55 + Math.random() * 40);
         notify("Hired Tester " + name + ".", true);
       }
       break;
@@ -3343,6 +3497,7 @@ function doAction(action, id) {
       else if (spend(PRICES.mgr)) {
         const name = MGR_NAMES[c.mgrs.length % MGR_NAMES.length];
         c.mgrs.push(name);
+        setPerf("mgr", name, 55 + Math.random() * 40);
         notify("Hired Manager " + name + ".", true);
       }
       break;
@@ -3352,6 +3507,7 @@ function doAction(action, id) {
       else if (spend(PRICES.law)) {
         const name = LAW_NAMES[c.laws.length % LAW_NAMES.length];
         c.laws.push(name);
+        setPerf("law", name, 55 + Math.random() * 40);
         notify("Hired Lawyer " + name + ".", true);
       }
       break;
@@ -3361,6 +3517,7 @@ function doAction(action, id) {
       else if (spend(PRICES.sec)) {
         const name = SEC_NAMES[c.secs.length % SEC_NAMES.length];
         c.secs.push(name);
+        setPerf("sec", name, 55 + Math.random() * 40);
         notify("Hired security engineer " + name + ".", true);
       }
       break;
