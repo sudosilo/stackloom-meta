@@ -47,6 +47,22 @@
   .hud-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
   .money { font-size: 28px; font-weight: 750; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
   .money.negative { color: var(--warn); }
+  .tower { background: var(--surface); border: 3px solid #2463b0; border-radius: 12px; overflow: hidden; margin-bottom: 8px; }
+  .tower-svg { display: block; font-family: inherit; }
+  .tower-svg [data-do] { cursor: pointer; }
+  .skyline { background: #e6f3ff; border: 1px solid var(--edge); border-radius: 12px; padding: 8px 8px 4px; }
+  .sky-labels { display: flex; font-size: 11px; color: var(--muted); text-align: center; }
+  .pie { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--edge); border-radius: 12px; padding: 10px; }
+  .legend { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .leg { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .leg i, .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; margin-right: 6px; }
+  .leg span { flex: 1; }
+  .build-opt { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--edge); border-radius: 12px; padding: 10px; margin-bottom: 8px; font: inherit; color: inherit; }
+  .build-opt:disabled { opacity: 0.45; }
+  .bo-swatch { width: 38px; height: 38px; flex: none; border-radius: 8px; border: 2px solid #1c2833; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  .bo-text { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--muted); }
+  .bo-text b { font-size: 15px; color: var(--ink, #1c2833); }
+  .bo-cost { font-weight: 700; color: #2463b0; white-space: nowrap; }
   .floor { margin-bottom: 8px; }
   .floor-name { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #2463b0; margin: 0 2px 6px; }
   .floor svg { display: block; font-family: inherit; }
@@ -91,7 +107,7 @@
 
   /* Tabs sit at the top, under the status bar */
   .tabs {
-    display: grid; grid-template-columns: repeat(5, 1fr);
+    display: grid; grid-template-columns: repeat(6, 1fr);
     background: var(--surface); border-bottom: 1px solid var(--edge);
   }
   .tabs button { position: relative; background: none; border: none; padding: 12px 0 13px; font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -412,6 +428,7 @@
 
   <nav class="tabs">
     <button data-tab="orders" class="on">Orders<span id="badge" class="badge" hidden>0</span></button>
+    <button data-tab="tower">Tower</button>
     <button data-tab="terminals">Terminals</button>
     <button data-tab="team">Team</button>
     <button data-tab="office">Office</button>
@@ -444,6 +461,9 @@
     <h2>Product lines</h2>
     <p>Senior hires open new product lines, each one a new engine with a pile of skins: sudoku, bubble shooters, card games, lane runners, match three, pull out puzzles, energy and jobs games, crop timers, and vertical shooters. The Games tab keeps a sample of each so you can play what you are selling.</p>
 
+    <h2>The tower</h2>
+    <p>The Tower tab is your building from the side. Tap an empty slot to build a room: terminal bays, server closets for agents, dev pods, QA rooms, hacker dens, legal offices, marketing and sales, design lofts for senior hires, and perks like the coffee bar and the cafeteria. Rooms decide how many people you can hire. Bigger offices add floors. The same tab shows the competition: every rival's tower on the skyline, the market share pie, and who ships what.</p>
+
     <h2>The office</h2>
     <p>Bigger offices hold more terminals and more staff, and cost more rent. Upgrades on the Office tab make the whole studio faster or cleaner.</p>
 
@@ -474,6 +494,14 @@
     <h2>How you lose</h2>
     <p>End a day below zero and the top bar turns red. End too many days in a row below zero and the studio folds. Your run score counts revenue, games shipped, and reputation, minus the buggy games you pushed out the door, and your best runs are saved on the Office tab.</p>
   </div>
+</div>
+
+<div id="build" class="help" hidden>
+  <div class="help-top">
+    <h1 id="buildTitle">Build</h1>
+    <button id="buildClose" class="btn primary">Close</button>
+  </div>
+  <div id="buildBody" class="help-body"></div>
 </div>
 
 <div id="fold" class="fold" hidden>
@@ -786,7 +814,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v3.13";
+const VERSION = "stackloom-meta v4.0";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -1811,6 +1839,318 @@ function renderCves() {
       <div class="news-text">The ${lineLabel(v.line)} engine is exposed. ${done} of ${total} ${plural(total, "game")} patched. Code freeze on that line until it is done. Each unpatched game costs ${cash(cveLiability(v))} a night, and anything left at the deadline is fined ${cash(cveFine())} and pulled.</div></div>`;
   }).join("");
 }
+
+
+// ------------------------------------------------------------------
+// THE TOWER. A side view of the studio building, stacker style. Every
+// floor has a row of slots, and every room you place takes up slots and
+// opens seats for one kind of staff or switches on a perk. The office
+// you rent decides how many floors you get. Rival towers stand on the
+// skyline next to yours, sized by how many games each one has shipped.
+// ------------------------------------------------------------------
+const TOWER_SLOTS = 6;
+const TOWER_FLOORS = [1, 2, 4, 6];
+const ROOM_TYPES = [
+  { key: "terminal", name: "Terminal bay", w: 2, cost: 300, role: "terminal", seats: 3, color: "#dfe9f6", text: "Holds three terminals, the machines that build games." },
+  { key: "server", name: "Server closet", w: 1, cost: 250, role: "agent", seats: 1, color: "#d9dde3", text: "Room for one agent, the AI program that runs up to three terminals." },
+  { key: "dev", name: "Dev pod", w: 2, cost: 600, role: "dev", seats: 2, color: "#d8f0ea", text: "Desks for two devs who supervise agents." },
+  { key: "qa", name: "QA room", w: 1, cost: 300, role: "qa", seats: 2, color: "#ddf0d9", text: "Two game testers who play, fix, and ship builds." },
+  { key: "mgr", name: "Manager office", w: 1, cost: 500, role: "mgr", seats: 1, color: "#f3e7cc", text: "One manager who runs testers and the house rules." },
+  { key: "sec", name: "Hacker den", w: 1, cost: 500, role: "sec", seats: 2, color: "#e4e0fa", text: "Two security engineers. Patches, and mischief when there is nothing to patch." },
+  { key: "law", name: "Legal office", w: 1, cost: 600, role: "law", seats: 2, color: "#e3e6ea", text: "Two lawyers who shrink fines and mail cease and desist letters." },
+  { key: "mkt", name: "Marketing studio", w: 1, cost: 500, role: "mkt", seats: 2, color: "#f8dcec", text: "Two marketers who run ad campaigns." },
+  { key: "sales", name: "Sales floor", w: 2, cost: 400, role: "sales", seats: 3, color: "#f6dad6", text: "Three salespeople working the phones. Closers get coffee." },
+  { key: "design", name: "Design loft", w: 2, cost: 800, role: "design", seats: 4, color: "#fbe6d1", text: "Four seats for senior hires, the ones who open new product lines." },
+  { key: "soda", name: "Soda machine", w: 1, cost: 200, perk: "soda", glyph: "🥤", color: "#fdf3df", text: "Perk. Sugar water at cost." },
+  { key: "snacks", name: "Snack machine", w: 1, cost: 300, perk: "snacks", glyph: "🍫", color: "#fdf3df", text: "Perk. Chips and candy that sometimes get stuck." },
+  { key: "coffee", name: "Coffee bar", w: 1, cost: 900, perk: "coffee", glyph: "☕", color: "#f6efe0", text: "Perk. Coffee is for closers." },
+  { key: "lounge", name: "Lounge", w: 2, cost: 2500, perk: "lounge", glyph: "🛋️", color: "#eef4fb", text: "Perk. Couches, a TV, and a foosball table." },
+  { key: "catering", name: "Cafeteria", w: 2, cost: 1200, perk: "catering", glyph: "🍱", color: "#f4f8ec", text: "Perk. Daily catering for the whole team." }
+];
+const ROLE_LIST = { terminal: "terminals", agent: "agents", dev: "devs", qa: "qas", mgr: "mgrs", sec: "secs", law: "laws", mkt: "mkts", sales: "sales" };
+const ROLE_COLOR = { dev: "#2fa38f", qa: "#3f9a3a", mgr: "#b07a12", sec: "#5b4bdb", law: "#55606e", mkt: "#d14f9c", sales: "#c0392b", design: "#e8862e" };
+
+function roomType(key) { return ROOM_TYPES.find(t => t.key === key); }
+function towerFloors() { return Math.max(TOWER_FLOORS[company.officeLevel], ...((company.tower || { rooms: [] }).rooms.map(r => r.floor + 1)), 1); }
+function towerRooms() { return (company.tower && company.tower.rooms) || []; }
+function seats(role) { return towerRooms().reduce((n, r) => { const t = roomType(r.type); return n + (t && t.role === role ? t.seats : 0); }, 0); }
+function staffCount(role) {
+  if (role === "design") return SENIORS.filter(x => company.seniors[x.key]).length;
+  return (company[ROLE_LIST[role]] || []).length;
+}
+function slotFree(floor, slot) {
+  return !towerRooms().some(r => r.floor === floor && slot >= r.slot && slot < r.slot + roomType(r.type).w);
+}
+function fits(type, floor, slot) {
+  const t = roomType(type);
+  if (floor >= TOWER_FLOORS[company.officeLevel] || slot + t.w > TOWER_SLOTS) return false;
+  for (let s = slot; s < slot + t.w; s++) if (!slotFree(floor, s)) return false;
+  return true;
+}
+function placeRoom(type, floor, slot, free) {
+  const c = company;
+  const t = roomType(type);
+  if (!fits(type, floor, slot)) { showToast("That does not fit there."); return false; }
+  if (t.perk && c.upgrades[t.perk]) { showToast("The studio already has one of those."); return false; }
+  const pk = t.perk && PERKS.find(k => k.key === t.perk);
+  if (pk && c.officeLevel < pk.office) { showToast("That needs the " + OFFICES[pk.office].name.toLowerCase() + " or bigger."); return false; }
+  if (!free && !spend(t.cost)) return false;
+  c.tower.rooms.push({ id: c.nextId++, type: type, floor: floor, slot: slot });
+  if (t.perk) c.upgrades[t.perk] = true;
+  return true;
+}
+function autoPlace(type) {
+  for (let f = 0; f < 40; f++) for (let s = 0; s < TOWER_SLOTS; s++) {
+    const t = roomType(type);
+    let ok = s + t.w <= TOWER_SLOTS;
+    for (let k = s; ok && k < s + t.w; k++) if (!slotFree(f, k)) ok = false;
+    if (ok) { company.tower.rooms.push({ id: company.nextId++, type: type, floor: f, slot: s }); return; }
+  }
+}
+// Old saves get a tower built to fit the staff they already have.
+function ensureTower() {
+  const c = company;
+  if (c.tower) return;
+  c.tower = { rooms: [] };
+  ROOM_TYPES.filter(t => t.role).forEach(t => {
+    const need = t.role === "terminal" ? Math.max(1, c.terminals.length) : t.role === "agent" ? Math.max(1, c.agents.length) : staffCount(t.role);
+    while (seats(t.role) < need) autoPlace(t.key);
+  });
+  ROOM_TYPES.filter(t => t.perk && c.upgrades[t.perk]).forEach(t => autoPlace(t.key));
+}
+function demolishRoom(id) {
+  const c = company;
+  const r = towerRooms().find(x => x.id === id);
+  if (!r) return;
+  const t = roomType(r.type);
+  if (t.role) {
+    const have = t.role === "terminal" ? c.terminals.length : staffCount(t.role);
+    if (seats(t.role) - t.seats < have) { showToast("People still need those seats. Fire somebody or build another " + t.name.toLowerCase() + " first."); return; }
+  }
+  c.tower.rooms = c.tower.rooms.filter(x => x !== r);
+  if (t.perk) c.upgrades[t.perk] = false;
+  c.money += Math.round(t.cost / 2);
+  notify("Tore out the " + t.name.toLowerCase() + " and sold the furniture for " + cash(Math.round(t.cost / 2)) + ".", true);
+}
+
+// ------------------------------------------------------------------
+// The competition. Rival studios ship games every night, some of them
+// originals. Their totals set the skyline and the market share pie.
+// ------------------------------------------------------------------
+const ALL_LINES = ["blocks", "doku", "bubble", "cards", "runner", "match", "jam", "mob", "farm", "shooter"];
+const RIVAL_COLORS = { "Gloomsoft": "#55606e", "Tadpole Interactive": "#3f9a3a", "Megabyte Mills": "#d14f9c", "Hollowpoint Games": "#b07a12" };
+function ensureRivals() {
+  const c = company;
+  if (c.rivals) return;
+  c.rivals = RIVALS.map((r, i) => {
+    const byLine = {};
+    const start = [30, 14, 20, 9][i];
+    for (let k = 0; k < start; k++) { const l = pick(ALL_LINES); byLine[l] = (byLine[l] || 0) + 1; }
+    return { name: r.name, games: start, originals: [3, 1, 2, 0][i], byLine: byLine };
+  });
+  if (!c.byLine) {
+    c.byLine = {};
+    c.catalog.forEach(g => { const l = catalogLine(g) || "blocks"; c.byLine[l] = (c.byLine[l] || 0) + 1; });
+  }
+}
+function rivalNight() {
+  const c = company;
+  ensureRivals();
+  const breached = activeEvents().some(a => a.id === "rival_breach");
+  c.rivals.forEach(r => {
+    let n = 1 + Math.floor(Math.random() * 3) + Math.floor(c.day / 12);
+    if (r.name === "Gloomsoft" && activeEvents().some(a => a.id === "rival_blocks")) { r.byLine.blocks = (r.byLine.blocks || 0) + 8; r.games += 8; }
+    if (breached && Math.random() < 0.5) n = Math.max(0, n - 2);
+    for (let k = 0; k < n; k++) { const l = pick(ALL_LINES); r.byLine[l] = (r.byLine[l] || 0) + 1; r.games++; }
+    if (Math.random() < 0.12) { r.originals++; r.games++; }
+  });
+}
+function marketRows() {
+  ensureRivals();
+  const c = company;
+  return [{ name: "Your studio", games: c.shipped, originals: 0, byLine: c.byLine || {}, color: "#2463b0", you: true }]
+    .concat(c.rivals.map(r => Object.assign({ color: RIVAL_COLORS[r.name] || "#7d8b99" }, r)));
+}
+
+function renderPie(rows) {
+  const total = rows.reduce((n, r) => n + r.games, 0) || 1;
+  let a = -Math.PI / 2, svg = "";
+  const cx = 90, cy = 90, R = 80;
+  rows.forEach(r => {
+    const frac = r.games / total;
+    if (frac <= 0) return;
+    if (frac >= 0.999) { svg += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="${r.color}"/>`; return; }
+    const b = a + frac * Math.PI * 2;
+    const large = frac > 0.5 ? 1 : 0;
+    svg += `<path d="M${cx} ${cy} L${cx + R * Math.cos(a)} ${cy + R * Math.sin(a)} A${R} ${R} 0 ${large} 1 ${cx + R * Math.cos(b)} ${cy + R * Math.sin(b)}Z" fill="${r.color}" stroke="#ffffff" stroke-width="2"/>`;
+    a = b;
+  });
+  const legend = rows.map(r => `<div class="leg"><i style="background:${r.color}"></i><span>${r.name}</span><b>${Math.round(r.games / total * 100)} percent</b></div>`).join("");
+  return `<div class="pie"><svg viewBox="0 0 180 180" width="150" height="150">${svg}<circle cx="${cx}" cy="${cy}" r="34" fill="#ffffff"/><text x="${cx}" y="${cy + 5}" font-size="15" font-weight="750" text-anchor="middle" fill="#2463b0">${Math.round(rows[0].games / total * 100)}%</text></svg><div class="legend">${legend}</div></div>`;
+}
+
+function renderSkyline(rows) {
+  const max = Math.max(...rows.map(r => r.games), 1);
+  const W = 340, H = 150, bw = 52, gap = (W - bw * rows.length) / (rows.length + 1);
+  let svg = `<rect x="0" y="${H - 6}" width="${W}" height="6" fill="#b8c2cc"/>`;
+  rows.forEach((r, i) => {
+    const h = Math.max(14, Math.round((H - 34) * r.games / max));
+    const x = gap + i * (bw + gap), y = H - 6 - h;
+    svg += `<rect x="${x}" y="${y}" width="${bw}" height="${h}" fill="${r.color}" stroke="#1c2833" stroke-width="1.5" rx="2"/>`;
+    for (let wy = y + 6; wy < H - 14; wy += 10) for (let wx = x + 6; wx < x + bw - 6; wx += 12) svg += `<rect x="${wx}" y="${wy}" width="6" height="5" fill="${r.you ? "#bfe0ff" : "#f1f4f7"}" opacity="0.8"/>`;
+    svg += `<text x="${x + bw / 2}" y="${y - 4}" font-size="10" font-weight="700" text-anchor="middle" fill="#1c2833">${r.games}</text>`;
+  });
+  const labels = rows.map((r, i) => `<span style="width:${100 / rows.length}%">${r.you ? "You" : r.name.split(" ")[0]}</span>`).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%">${svg}</svg><div class="sky-labels">${labels}</div>`;
+}
+
+function renderMarketStats(rows) {
+  return rows.map(r => {
+    const lines = Object.keys(r.byLine).filter(l => r.byLine[l]).sort((a, b) => r.byLine[b] - r.byLine[a]);
+    return `<div class="row"><div class="row-top"><div class="row-name"><span class="dot" style="background:${r.color}"></span>${r.name}</div><div class="row-state">${r.games} ${plural(r.games, "game")}</div></div>
+      <div class="row-sub">${lines.length ? lines.map(l => lineName(l) + " " + r.byLine[l]).join(", ") : "Nothing shipped yet"}${r.you ? "" : ". " + r.originals + " original " + plural(r.originals, "game")}</div></div>`;
+  }).join("");
+}
+
+// The building, drawn bottom up. Tap an empty slot to build, tap a room
+// to see who is in it or tear it out.
+function renderTower() {
+  ensureTower();
+  const c = company;
+  const floors = towerFloors(), built = TOWER_FLOORS[c.officeLevel];
+  const SW = 52, FH = 58, X0 = 14, ROOF = 46;
+  const W = X0 * 2 + SW * TOWER_SLOTS, H = ROOF + floors * FH + 14;
+  const filled = {};
+  let svg = `<rect x="0" y="0" width="${W}" height="${H}" fill="#e6f3ff"/>`;
+  svg += `<rect x="${X0 - 4}" y="${ROOF - 8}" width="${SW * TOWER_SLOTS + 8}" height="${floors * FH + 8}" fill="#9aa9b8" stroke="#1c2833" stroke-width="2"/>`;
+  svg += `<rect x="${W / 2 - 70}" y="8" width="140" height="24" rx="4" fill="#2463b0" stroke="#1c2833" stroke-width="2"/><text x="${W / 2}" y="25" font-size="13" font-weight="800" text-anchor="middle" fill="#ffffff" letter-spacing="2">STACKLOOM</text>`;
+  svg += `<line x1="${W / 2 - 50}" y1="32" x2="${W / 2 - 50}" y2="${ROOF - 8}" stroke="#1c2833" stroke-width="2"/><line x1="${W / 2 + 50}" y1="32" x2="${W / 2 + 50}" y2="${ROOF - 8}" stroke="#1c2833" stroke-width="2"/>`;
+  for (let f = 0; f < floors; f++) {
+    const y = ROOF + (floors - 1 - f) * FH;
+    svg += `<text x="4" y="${y + FH / 2 + 4}" font-size="9" fill="#55606e">${f + 1}</text>`;
+    for (let s = 0; s < TOWER_SLOTS; s++) {
+      if (!slotFree(f, s)) continue;
+      const x = X0 + s * SW;
+      if (f < built) svg += `<g data-do="buildAt" data-id="${f}:${s}"><rect x="${x + 2}" y="${y + 2}" width="${SW - 4}" height="${FH - 6}" fill="#f3f6f9" stroke="#9aa9b8" stroke-dasharray="4 3"/><text x="${x + SW / 2}" y="${y + FH / 2 + 4}" font-size="16" font-weight="700" text-anchor="middle" fill="#2463b0">+</text></g>`;
+      else svg += `<rect x="${x + 2}" y="${y + 2}" width="${SW - 4}" height="${FH - 6}" fill="url(#hatch)"/>`;
+    }
+    svg += `<rect x="${X0 - 4}" y="${y + FH - 4}" width="${SW * TOWER_SLOTS + 8}" height="4" fill="#55606e"/>`;
+  }
+  towerRooms().slice().sort((a, b) => a.floor - b.floor || a.slot - b.slot).forEach(r => {
+    const t = roomType(r.type);
+    const x = X0 + r.slot * SW, y = ROOF + (floors - 1 - r.floor) * FH, w = t.w * SW;
+    svg += `<g data-do="room" data-id="${r.id}"><rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${FH - 6}" fill="${t.color}" stroke="#1c2833" stroke-width="1.5"/>`;
+    svg += `<text x="${x + 6}" y="${y + 12}" font-size="7.5" font-weight="700" fill="#1c2833">${t.name.toUpperCase()}</text>`;
+    const base = y + FH - 6;
+    if (t.perk) {
+      svg += `<text x="${x + w / 2}" y="${base - 10}" font-size="22" text-anchor="middle">${t.glyph}</text>`;
+    } else if (t.role === "terminal") {
+      const start = filled.terminal || 0;
+      for (let k = 0; k < t.seats; k++) {
+        const ti = start + k, owned = ti < c.terminals.length, job = owned && c.terminals[ti].job != null;
+        const mx = x + 10 + k * 30;
+        svg += `<rect x="${mx}" y="${base - 26}" width="24" height="16" rx="2" fill="${owned ? "#dfe5ec" : "none"}" stroke="${owned ? "#1c2833" : "#9aa9b8"}" ${owned ? "" : 'stroke-dasharray="3 2"'}/>`;
+        if (owned) svg += `<rect class="${job ? "screen" : ""}" x="${mx + 2}" y="${base - 24}" width="20" height="12" fill="${job ? "#2463b0" : "#9aa9b8"}"/><rect x="${mx + 9}" y="${base - 10}" width="6" height="4" fill="#7d8b99"/>`;
+      }
+      filled.terminal = start + t.seats;
+    } else if (t.role === "agent") {
+      const ai = filled.agent || 0, name = c.agents[ai];
+      svg += `<rect x="${x + 12}" y="${base - 34}" width="26" height="32" rx="2" fill="${name ? "#3a3f47" : "none"}" stroke="${name ? "#1c2833" : "#9aa9b8"}" ${name ? "" : 'stroke-dasharray="3 2"'}/>`;
+      if (name) {
+        const busy = c.terminals.slice(ai * 3, ai * 3 + 3).some(tm => tm.job != null);
+        for (let k = 0; k < 3; k++) svg += `<rect x="${x + 15}" y="${base - 31 + k * 10}" width="20" height="5" fill="#5b6570"/><circle class="${busy ? "led" : ""}" cx="${x + 32}" cy="${base - 28.5 + k * 10}" r="1.6" fill="${busy ? "#2fb4e6" : "#6bb34a"}"/>`;
+      }
+      filled.agent = ai + 1;
+    } else {
+      const role = t.role;
+      const list = role === "design" ? SENIORS.filter(xx => c.seniors[xx.key]).map(xx => xx.name) : (c[ROLE_LIST[role]] || []);
+      const start = filled[role] || 0;
+      const spacing = (w - 12) / t.seats;
+      for (let k = 0; k < t.seats; k++) {
+        const name = list[start + k];
+        const px = x + 6 + spacing * k + spacing / 2;
+        svg += `<rect x="${px - 11}" y="${base - 14}" width="22" height="4" fill="#b98c5e"/><rect x="${px - 5}" y="${base - 22}" width="10" height="7" fill="${name ? "#2463b0" : "#c3cbd4"}"/>`;
+        if (name) {
+          const h = floorHash(name);
+          svg += `<g class="typing"><circle cx="${px + 7}" cy="${base - 24}" r="4" fill="${FLOOR_SKIN[h % FLOOR_SKIN.length]}" stroke="#1c2833" stroke-width="0.8"/><rect x="${px + 3}" y="${base - 20}" width="8" height="10" rx="2" fill="${ROLE_COLOR[role]}"/><title>${name}</title></g>`;
+        }
+      }
+      filled[role] = start + t.seats;
+    }
+    svg += `</g>`;
+  });
+  svg += `<rect x="0" y="${H - 10}" width="${W}" height="10" fill="#c9a27a"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" class="tower-svg"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#eef1f4"/><line x1="0" y1="0" x2="0" y2="6" stroke="#cfd6de" stroke-width="3"/></pattern></defs>${svg}</svg>`;
+}
+
+function renderTowerTab() {
+  const c = company;
+  const built = TOWER_FLOORS[c.officeLevel];
+  const rows = marketRows();
+  let html = `<h2 class="section-title">${office().name}, ${built} ${plural(built, "floor")}</h2>
+    <p class="note">Tap an empty slot to build a room. Rooms set how many people you can hire and switch on perks. Tap a room to see it or tear it out. Moving to a bigger office on the Office tab adds floors.</p>
+    <div class="tower">${renderTower()}</div>
+    <h2 class="section-title spaced">The competition</h2>
+    <p class="note">Every studio's tower on the skyline, sized by how many games it has shipped. Out ship them and your tower is the tallest one on the block.</p>
+    <div class="skyline">${renderSkyline(rows)}</div>
+    <h2 class="section-title spaced">Market share</h2>
+    ${renderPie(rows)}
+    <h2 class="section-title spaced">Who ships what</h2>
+    ${renderMarketStats(rows)}`;
+  return html;
+}
+
+function openBuildSheet(floor, slot) {
+  const c = company;
+  const opts = ROOM_TYPES.map(t => {
+    const pk = t.perk && PERKS.find(k => k.key === t.perk);
+    const ok = fits(t.key, floor, slot) && !(pk && c.officeLevel < pk.office);
+    const have = t.perk && c.upgrades[t.perk];
+    const seatLine = t.role ? (t.role === "terminal" ? t.seats + " terminals" : t.seats + " " + plural(t.seats, "seat")) + ", " : "";
+    return `<button class="build-opt" data-build="${t.key}" ${!ok || have ? "disabled" : ""}>
+      <span class="bo-swatch" style="background:${t.color}">${t.glyph || ""}</span>
+      <span class="bo-text"><b>${t.name}</b><span>${seatLine}${t.w} ${plural(t.w, "slot")} wide. ${t.text}</span></span>
+      <span class="bo-cost">${have ? "Built" : !ok ? "No room" : cash(t.cost)}</span></button>`;
+  }).join("");
+  document.getElementById("buildTitle").textContent = "Build on floor " + (floor + 1);
+  document.getElementById("buildBody").innerHTML = opts;
+  const sheet = document.getElementById("build");
+  sheet.dataset.floor = floor;
+  sheet.dataset.slot = slot;
+  sheet.hidden = false;
+}
+
+function openRoomSheet(id) {
+  const c = company;
+  const r = towerRooms().find(x => x.id === id);
+  if (!r) return;
+  const t = roomType(r.type);
+  let who = "";
+  if (t.role === "terminal") who = "Holds up to " + t.seats + " terminals. The studio owns " + c.terminals.length + " of " + seats("terminal") + " terminal spots.";
+  else if (t.role) who = staffCount(t.role) + " of " + seats(t.role) + " " + t.name.toLowerCase().replace(/ (pod|room|office|den|studio|floor|loft|closet)$/, "") + " seats in the building are filled.";
+  else who = "This perk is running. Upkeep shows on the Office tab.";
+  document.getElementById("buildTitle").textContent = t.name + ", floor " + (r.floor + 1);
+  document.getElementById("buildBody").innerHTML = `<p class="note">${t.text}</p><p class="note">${who}</p>
+    <button class="btn wide" data-demolish="${r.id}">Tear it out and sell the furniture for ${cash(Math.round(t.cost / 2))}</button>`;
+  document.getElementById("build").hidden = false;
+}
+
+document.getElementById("buildClose").addEventListener("click", () => { document.getElementById("build").hidden = true; });
+document.getElementById("buildBody").addEventListener("click", e => {
+  const opt = e.target.closest("[data-build]");
+  const dem = e.target.closest("[data-demolish]");
+  const sheet = document.getElementById("build");
+  if (opt && !opt.disabled) {
+    if (placeRoom(opt.dataset.build, Number(sheet.dataset.floor), Number(sheet.dataset.slot), false)) {
+      notify("Built a " + roomType(opt.dataset.build).name.toLowerCase() + " on floor " + (Number(sheet.dataset.floor) + 1) + ".", true);
+      sheet.hidden = true;
+    }
+  } else if (dem) {
+    demolishRoom(Number(dem.dataset.demolish));
+    sheet.hidden = true;
+  }
+  render();
+});
 
 // ------------------------------------------------------------------
 // Bankruptcy. End a day below zero and the clock starts. End too many
@@ -2845,6 +3185,8 @@ function shipOrder(order) {
 
   c.money += pay;
   c.earned = (c.earned || 0) + pay;
+  if (!c.byLine) c.byLine = {};
+  c.byLine[order.line || "blocks"] = (c.byLine[order.line || "blocks"] || 0) + 1;
   c.reputation = clamp(c.reputation + repChange, 0, 100);
   c.shipped++;
   c.catalog.unshift({
@@ -2944,6 +3286,7 @@ function payBills() {
   checkCves();
   drift();
   runManagerRules();
+  rivalNight();
   c.heat = Math.max(0, (c.heat || 0) - 5);
   runLawyers();
   checkDebt();
@@ -2956,6 +3299,7 @@ function payBills() {
 function simulate(dt) {
   const c = company;
   if (c.over) return;
+  ensureTower();
   c.time += dt;
 
   c.dayTimer += dt;
@@ -3150,12 +3494,12 @@ function renderTerminals() {
       </div>`;
   });
 
-  const full = c.terminals.length >= room.terminals;
+  const full = c.terminals.length >= seats("terminal");
   html += `<div class="buy">
     ${full
-      ? `<button class="btn wide" disabled>No free desks. Move to a bigger office.</button>`
+      ? `<button class="btn wide" disabled>No free desks. Build more room in the tower.</button>`
       : `<button class="btn primary wide" data-do="buyTerminal">Buy a terminal for ${cash(terminalPrice())}</button>`}
-    <p class="quiet">${c.terminals.length} of ${room.terminals} desks used. Each terminal costs ${cash(PRICES.terminalUpkeep)} a day to run.</p>
+    <p class="quiet">${c.terminals.length} of ${seats("terminal")} desks used. Each terminal costs ${cash(PRICES.terminalUpkeep)} a day to run.</p>
   </div>`;
   return html;
 }
@@ -3178,22 +3522,22 @@ function floorPods() {
   const lockedAt = key => { const i = OFFICES.findIndex(o => o[key] > 0); return i >= 0 ? OFFICES[i].name.toLowerCase() : ""; };
   return [
     { name: "Machine room", kind: "machines", color: "#2463b0", wide: true, seats: 0, people: [] },
-    { name: "Dev pod", kind: "dev", color: "#2fa38f", seats: room.devs, locked: room.devs === 0 ? lockedAt("devs") : "",
+    { name: "Dev pod", kind: "dev", color: "#2fa38f", seats: seats("dev"), locked: seats("dev") === 0 ? "tower" : "",
       people: c.devs.map((n, d) => ({ name: "Dev " + n, busy: [0, 1, 2].some(k => agentBusy(d * 3 + k)) })) },
-    { name: "Hacker pod", kind: "sec", color: "#5b4bdb", seats: SEC_SEATS[L],
+    { name: "Hacker pod", kind: "sec", color: "#5b4bdb", seats: seats("sec"),
       people: (c.secs || []).map(n => ({ name: "Security engineer " + n, busy: true })) },
-    { name: "Legal pod", kind: "law", color: "#55606e", seats: LAW_SEATS[L],
+    { name: "Legal pod", kind: "law", color: "#55606e", seats: seats("law"),
       people: (c.laws || []).map(n => ({ name: "Lawyer " + n, busy: (c.cves || []).length > 0 })) },
-    { name: "QA pod", kind: "qa", color: "#3f9a3a", seats: QA_SEATS[L],
+    { name: "QA pod", kind: "qa", color: "#3f9a3a", seats: seats("qa"),
       people: (c.qas || []).map(n => ({ name: "Tester " + n, busy: c.orders.some(o => o.status === "ready" && o.qa === n) })) },
-    { name: "Manager pod", kind: "mgr", color: "#b07a12", seats: MGR_SEATS[L], locked: MGR_SEATS[L] === 0 ? OFFICES[MGR_SEATS.findIndex(n => n > 0)].name.toLowerCase() : "",
+    { name: "Manager pod", kind: "mgr", color: "#b07a12", seats: seats("mgr"), locked: seats("mgr") === 0 ? "tower" : "",
       people: (c.mgrs || []).map(n => ({ name: "Manager " + n, busy: (c.qas || []).length > 0 })) },
-    { name: "Marketing pod", kind: "mkt", color: "#d14f9c", seats: MKT_SEATS[L], locked: MKT_SEATS[L] === 0 ? OFFICES[MKT_SEATS.findIndex(n => n > 0)].name.toLowerCase() : "",
+    { name: "Marketing pod", kind: "mkt", color: "#d14f9c", seats: seats("mkt"), locked: seats("mkt") === 0 ? "tower" : "",
       people: (c.mkts || []).map(n => ({ name: "Marketer " + n, busy: campaigns().some(a => a.by === n) })) },
-    { name: "Sales pod", kind: "sales", color: "#c0392b", seats: SALES_SEATS[L],
+    { name: "Sales pod", kind: "sales", color: "#c0392b", seats: seats("sales"),
       people: (c.sales || []).map(n => ({ name: "Salesperson " + n, busy: true })) },
-    { name: "Design pod", kind: "design", color: "#e8862e", seats: Math.max(seniorsHere.length, hiredSeniors.length), wide: true,
-      locked: !seniorsHere.length && !hiredSeniors.length ? OFFICES[Math.min(...SENIORS.map(x => x.office))].name.toLowerCase() : "",
+    { name: "Design pod", kind: "design", color: "#e8862e", seats: Math.max(seats("design"), hiredSeniors.length), wide: true,
+      locked: !seats("design") && !hiredSeniors.length ? "tower" : "",
       people: hiredSeniors.map(x => ({ name: x.title + " " + x.name, busy: c.orders.some(o => o.status === "building" && (o.line || "blocks") === x.line) })) }
   ];
 }
@@ -3232,22 +3576,22 @@ function renderFloor() {
   pods.forEach(pod => {
     if (pod.kind === "machines") {
       const room = office(), width = W - PAD * 2;
-      const rows = Math.max(1, Math.ceil(room.terminals / 3));
+      const rows = Math.max(1, Math.ceil(seats("terminal") / 3));
       const RH = 40, h = LABEL + rows * RH + PAD;
       body += `<rect x="${x}" y="${y}" width="${width}" height="${h}" rx="8" fill="#ffffff" fill-opacity="0.55" stroke="${pod.color}" stroke-width="2"/>`;
       body += `<text x="${x + 8}" y="${y + 15}" font-size="11" font-weight="700" fill="${pod.color}">MACHINE ROOM</text>`;
-      body += `<text x="${x + width - 8}" y="${y + 15}" font-size="10" text-anchor="end" fill="#6b7785">${c.agents.length} of ${room.agents} agents, ${c.terminals.length} of ${room.terminals} terminals</text>`;
+      body += `<text x="${x + width - 8}" y="${y + 15}" font-size="10" text-anchor="end" fill="#6b7785">${c.agents.length} of ${seats("agent")} agents, ${c.terminals.length} of ${seats("terminal")} terminals</text>`;
       for (let r = 0; r < rows; r++) {
         const ry = y + LABEL + r * RH, rx = x + 10;
         const agent = c.agents[r];
-        const terms = [0, 1, 2].map(k => r * 3 + k).filter(i => i < room.terminals);
+        const terms = [0, 1, 2].map(k => r * 3 + k).filter(i => i < seats("terminal"));
         const ownedHere = terms.filter(i => i < c.terminals.length).length;
         if (agent && ownedHere) body += `<line x1="${rx + 30}" y1="${ry + 17}" x2="${rx + 44 + ownedHere * 50 - 14}" y2="${ry + 17}" stroke="#2463b0" stroke-width="2" stroke-dasharray="4 3"/>`;
         if (agent) {
           body += `<g><title>Agent ${agent}, an AI program running these terminals</title><rect x="${rx}" y="${ry + 2}" width="30" height="30" rx="3" fill="#3a3f47" stroke="#1c2833"/>`;
           [0, 1, 2].forEach(k => { body += `<rect x="${rx + 4}" y="${ry + 6 + k * 9}" width="22" height="5" rx="1" fill="#5b6570"/><circle class="${agentBusy(r) ? "led" : ""}" cx="${rx + 22}" cy="${ry + 8.5 + k * 9}" r="1.6" fill="${agentBusy(r) ? "#2fb4e6" : "#6bb34a"}"/>`; });
           body += `<text x="${rx + 15}" y="${ry + 39}" font-size="7" font-weight="700" text-anchor="middle" fill="#2463b0">${agent}</text></g>`;
-        } else if (r < room.agents) {
+        } else if (r < seats("agent")) {
           body += `<rect x="${rx}" y="${ry + 2}" width="30" height="32" rx="3" fill="none" stroke="#9aa9b8" stroke-dasharray="3 2"/><text x="${rx + 15}" y="${ry + 22}" font-size="10" font-weight="700" text-anchor="middle" fill="#7d8b99">+</text>`;
         } else {
           body += `<rect x="${rx}" y="${ry + 2}" width="30" height="32" rx="3" fill="url(#hatch)"/>`;
@@ -3267,17 +3611,17 @@ function renderFloor() {
     const width = pod.wide ? W - PAD * 2 : podW;
     const cols = pod.wide ? Math.floor((width - PAD * 2) / D) : COLS;
     if (pod.wide && col === 1) { x = PAD; y += rowH + PAD; rowH = 0; col = 0; }
-    const seats = Math.max(pod.seats, pod.people.length);
-    const rows = Math.max(1, Math.ceil(seats / cols));
+    const seatCount = Math.max(pod.seats, pod.people.length);
+    const rows = Math.max(1, Math.ceil(seatCount / cols));
     const h = LABEL + rows * D + PAD;
     body += `<rect x="${x}" y="${y}" width="${width}" height="${h}" rx="8" fill="#ffffff" fill-opacity="0.55" stroke="${pod.color}" stroke-width="2"/>`;
     body += `<text x="${x + 8}" y="${y + 15}" font-size="11" font-weight="700" fill="${pod.color}">${pod.name.toUpperCase()}</text>`;
-    body += `<text x="${x + width - 8}" y="${y + 15}" font-size="10" text-anchor="end" fill="#6b7785">${pod.locked ? "" : pod.people.length + " of " + seats}</text>`;
-    if (pod.locked || seats === 0) {
+    body += `<text x="${x + width - 8}" y="${y + 15}" font-size="10" text-anchor="end" fill="#6b7785">${pod.locked ? "" : pod.people.length + " of " + seatCount}</text>`;
+    if (pod.locked || seatCount === 0) {
       body += `<rect x="${x + 8}" y="${y + LABEL}" width="${width - 16}" height="${D - 6}" rx="6" fill="url(#hatch)"/>`;
-      body += `<text x="${x + width / 2}" y="${y + LABEL + D / 2}" font-size="10" text-anchor="middle" fill="#55606e">${pod.locked ? "Opens in the " + pod.locked : "No seats"}</text>`;
+      body += `<text x="${x + width / 2}" y="${y + LABEL + D / 2}" font-size="10" text-anchor="middle" fill="#55606e">${pod.locked ? "Build one in the tower" : "No seats"}</text>`;
     }
-    for (let i = 0; i < seats; i++) {
+    for (let i = 0; i < seatCount; i++) {
       const cx = x + PAD + (i % cols) * D, cy = y + LABEL + Math.floor(i / cols) * D;
       const person = pod.people[i];
       if (cubes) body += `<path d="M${cx + 2} ${cy + D - 4} V${cy + 2} H${cx + D - 2} V${cy + D - 4}" fill="none" stroke="#9aa9b8" stroke-width="3" stroke-linecap="round"/>`;
@@ -3342,10 +3686,10 @@ function renderTeam() {
   });
 
   html += `<div class="buy">
-    ${c.agents.length >= room.agents
-      ? `<button class="btn wide" disabled>No free agent seats. Move to a bigger office.</button>`
+    ${c.agents.length >= seats("agent")
+      ? `<button class="btn wide" disabled>No free agent seats. Build more room in the tower.</button>`
       : `<button class="btn primary wide" data-do="hireAgent">Hire an agent for ${cash(PRICES.agent)}</button>`}
-    <p class="quiet">${c.agents.length} of ${room.agents} agent ${plural(room.agents, "seat")} used.</p>
+    <p class="quiet">${c.agents.length} of ${seats("agent")} agent ${plural(seats("agent"), "seat")} used.</p>
   </div>`;
 
   html += `<h2 class="section-title spaced">Devs</h2>
@@ -3365,10 +3709,10 @@ function renderTeam() {
   });
 
   html += `<div class="buy">`;
-  if (room.devs === 0) html += `<button class="btn wide" disabled>The garage has no room for a dev</button>`;
-  else if (c.devs.length >= room.devs) html += `<button class="btn wide" disabled>No free dev seats. Move to a bigger office.</button>`;
+  if (seats("dev") === 0) html += `<button class="btn wide" disabled>Build a dev pod in the tower first</button>`;
+  else if (c.devs.length >= seats("dev")) html += `<button class="btn wide" disabled>No free dev seats. Build more room in the tower.</button>`;
   else html += `<button class="btn primary wide" data-do="hireDev">Hire a dev for ${cash(PRICES.dev)}</button>`;
-  html += `<p class="quiet">${c.devs.length} of ${room.devs} dev ${plural(room.devs, "seat")} used.</p></div>`;
+  html += `<p class="quiet">${c.devs.length} of ${seats("dev")} dev ${plural(seats("dev"), "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced">Game testers</h2>
     <p class="note">Testers play every finished game, fix most of the bugs they find, and ship it for you, so you never have to tap Ship. They grab games before agents ship them too, so fewer bugs reach customers.</p>`;
@@ -3384,9 +3728,9 @@ function renderTeam() {
         <div class="row-sub">${busy ? "Play testing the " + lookFor(busy).label + " game for " + busy.customer : "Waiting for a finished build"}${boss}</div>
       </div>`;
   });
-  const qaSeats = QA_SEATS[c.officeLevel];
+  const qaSeats = seats("qa");
   html += `<div class="buy">`;
-  if (qas.length >= qaSeats) html += `<button class="btn wide" disabled>No free tester seats. Move to a bigger office.</button>`;
+  if (qas.length >= qaSeats) html += `<button class="btn wide" disabled>No free tester seats. Build more room in the tower.</button>`;
   else html += `<button class="btn primary wide" data-do="hireQa">Hire a game tester for ${cash(PRICES.qa)}</button>`;
   html += `<p class="quiet">${qas.length} of ${qaSeats} tester ${plural(qaSeats, "seat")} used.</p></div>`;
 
@@ -3413,10 +3757,10 @@ function renderTeam() {
         <div class="row-sub">${team.length ? "Manages " + team.join(", ") : "No testers to manage yet. Hire more testers."}</div>
       </div>`;
   });
-  const mgrSeats = MGR_SEATS[c.officeLevel];
+  const mgrSeats = seats("mgr");
   html += `<div class="buy">`;
-  if (mgrSeats === 0) html += `<button class="btn wide" disabled>The garage has no room for a manager</button>`;
-  else if (mgrs.length >= mgrSeats) html += `<button class="btn wide" disabled>No free manager seats. Move to a bigger office.</button>`;
+  if (mgrSeats === 0) html += `<button class="btn wide" disabled>Build a manager office in the tower first</button>`;
+  else if (mgrs.length >= mgrSeats) html += `<button class="btn wide" disabled>No free manager seats. Build more room in the tower.</button>`;
   else html += `<button class="btn primary wide" data-do="hireMgr">Hire a manager for ${cash(PRICES.mgr)}</button>`;
   html += `<p class="quiet">${mgrs.length} of ${mgrSeats} manager ${plural(mgrSeats, "seat")} used.</p></div>`;
 
@@ -3434,9 +3778,9 @@ function renderTeam() {
         ${busy ? `<div class="bar"><i data-progress="${busy.id}"></i></div>` : ""}
       </div>`;
   });
-  const secSeats = SEC_SEATS[c.officeLevel];
+  const secSeats = seats("sec");
   html += `<div class="buy">`;
-  if (secs.length >= secSeats) html += `<button class="btn wide" disabled>No free security seats. Move to a bigger office.</button>`;
+  if (secs.length >= secSeats) html += `<button class="btn wide" disabled>No free security seats. Build more room in the tower.</button>`;
   else html += `<button class="btn primary wide" data-do="hireSec">Hire a security engineer for ${cash(PRICES.sec)}</button>`;
   html += `<p class="quiet">${secs.length} of ${secSeats} security ${plural(secSeats, "seat")} used.</p></div>`;
 
@@ -3461,10 +3805,10 @@ function renderTeam() {
         return `<button class="btn ${on ? "" : "primary"}" data-do="campaign" data-id="${line}" ${!free || on || lineFrozen(line) ? "disabled" : ""}>${lineName(line)}${on ? " running" : ""}</button>`;
       }).join("") + `</div>`;
   }
-  const mktSeats = MKT_SEATS[c.officeLevel];
+  const mktSeats = seats("mkt");
   html += `<div class="buy">`;
-  if (mktSeats === 0) html += `<button class="btn wide" disabled>The garage has no room for marketing</button>`;
-  else if (mkts.length >= mktSeats) html += `<button class="btn wide" disabled>No free marketing seats. Move to a bigger office.</button>`;
+  if (mktSeats === 0) html += `<button class="btn wide" disabled>Build a marketing studio in the tower first</button>`;
+  else if (mkts.length >= mktSeats) html += `<button class="btn wide" disabled>No free marketing seats. Build more room in the tower.</button>`;
   else html += `<button class="btn primary wide" data-do="hireMkt">Hire a marketer for ${cash(PRICES.mkt)}</button>`;
   html += `<p class="quiet">${mkts.length} of ${mktSeats} marketing ${plural(mktSeats, "seat")} used.</p></div>`;
 
@@ -3481,9 +3825,9 @@ function renderTeam() {
       </div>`;
   });
   if (sales.length) html += `<p class="quiet" style="margin:4px 2px 8px">New orders pay ${Math.round((salesPayMult() - 1) * 100)} percent more. Repeat client chance ${Math.round(repeatChance() * 100)} percent per clean ship.</p>`;
-  const salesSeats = SALES_SEATS[c.officeLevel];
+  const salesSeats = seats("sales");
   html += `<div class="buy">`;
-  if (sales.length >= salesSeats) html += `<button class="btn wide" disabled>No free sales seats. Move to a bigger office.</button>`;
+  if (sales.length >= salesSeats) html += `<button class="btn wide" disabled>No free sales seats. Build more room in the tower.</button>`;
   else html += `<button class="btn primary wide" data-do="hireSales">Hire a salesperson for ${cash(PRICES.sales)}</button>`;
   html += `<p class="quiet">${sales.length} of ${salesSeats} sales ${plural(salesSeats, "seat")} used.</p></div>`;
 
@@ -3499,9 +3843,9 @@ function renderTeam() {
         <div class="row-sub">${(c.cves || []).length ? "Handling the vulnerability fallout" : "Mailing cease and desist letters to rivals"}</div>
       </div>`;
   });
-  const lawSeats = LAW_SEATS[c.officeLevel];
+  const lawSeats = seats("law");
   html += `<div class="buy">`;
-  if (laws.length >= lawSeats) html += `<button class="btn wide" disabled>No free lawyer seats. Move to a bigger office.</button>`;
+  if (laws.length >= lawSeats) html += `<button class="btn wide" disabled>No free lawyer seats. Build more room in the tower.</button>`;
   else html += `<button class="btn primary wide" data-do="hireLaw">Hire a lawyer for ${cash(PRICES.law)}</button>`;
   html += `<p class="quiet">${laws.length} of ${lawSeats} lawyer ${plural(lawSeats, "seat")} used. Fines are cut to ${Math.round(lawCut() * 100)} percent.</p></div>`;
 
@@ -3538,13 +3882,13 @@ function renderOffice() {
   const next = OFFICES[c.officeLevel + 1];
 
   let html = `<h2 class="section-title">${room.name}</h2>
-    <p class="note">Room for ${room.terminals} terminals, ${room.agents} ${plural(room.agents, "agent")}, and ${room.devs} ${plural(room.devs, "dev")}. Rent is ${cash(room.rent)} a day.</p>`;
+    <p class="note">${TOWER_FLOORS[c.officeLevel]} ${plural(TOWER_FLOORS[c.officeLevel], "floor")} to build on in the Tower tab. Rent is ${cash(room.rent)} a day.</p>`;
 
   if (next) {
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">${next.name}</div><div class="row-state">${cash(next.rent)} a day</div></div>
-        <div class="row-sub">Room for ${next.terminals} terminals, ${next.agents} agents, and ${next.devs} ${plural(next.devs, "dev")}.</div>
+        <div class="row-sub">${TOWER_FLOORS[c.officeLevel + 1]} floors to build on, plus anything the bigger office unlocks.</div>
         <div class="actions"><button class="btn primary" data-do="moveOffice">Move in for ${cash(next.cost)}</button></div>
       </div>`;
   } else {
@@ -3611,9 +3955,11 @@ function renderGames() {
   return html;
 }
 
-const RENDERERS = { orders: renderOrders, terminals: renderTerminals, team: renderTeam, office: renderOffice, games: renderGames };
+const RENDERERS = { orders: renderOrders, tower: renderTowerTab, terminals: renderTerminals, team: renderTeam, office: renderOffice, games: renderGames };
 
 function render() {
+  ensureTower();
+  ensureRivals();
   const scroll = view.scrollTop;
   view.innerHTML = RENDERERS[currentTab]();
   view.scrollTop = scroll;
@@ -3735,11 +4081,11 @@ function doAction(action, id) {
       break;
     }
     case "buyTerminal":
-      if (c.terminals.length >= office().terminals) showToast("No free desks. Move to a bigger office.");
+      if (c.terminals.length >= seats("terminal")) showToast("No free desks. Build more room in the tower.");
       else if (spend(terminalPrice())) { c.terminals.push({ job: null }); notify("Bought Terminal " + c.terminals.length + "."); }
       break;
     case "hireAgent":
-      if (c.agents.length >= office().agents) showToast("No free agent seats. Move to a bigger office.");
+      if (c.agents.length >= seats("agent")) showToast("No free agent seats. Build more room in the tower.");
       else if (spend(PRICES.agent)) {
         const name = AGENT_NAMES[c.agents.length % AGENT_NAMES.length];
         c.agents.push(name);
@@ -3748,7 +4094,7 @@ function doAction(action, id) {
       }
       break;
     case "hireDev":
-      if (c.devs.length >= office().devs) showToast("No free dev seats. Move to a bigger office.");
+      if (c.devs.length >= seats("dev")) showToast("No free dev seats. Build more room in the tower.");
       else if (spend(PRICES.dev)) {
         const name = DEV_NAMES[c.devs.length % DEV_NAMES.length];
         c.devs.push(name);
@@ -3766,7 +4112,7 @@ function doAction(action, id) {
       break;
     case "hireMkt":
       if (!c.mkts) c.mkts = [];
-      if (c.mkts.length >= MKT_SEATS[c.officeLevel]) showToast("No free marketing seats. Move to a bigger office.");
+      if (c.mkts.length >= seats("mkt")) showToast("No free marketing seats. Build more room in the tower.");
       else if (spend(PRICES.mkt)) {
         const name = MKT_NAMES[c.mkts.length % MKT_NAMES.length];
         c.mkts.push(name);
@@ -3776,7 +4122,7 @@ function doAction(action, id) {
       break;
     case "hireSales":
       if (!c.sales) c.sales = [];
-      if (c.sales.length >= SALES_SEATS[c.officeLevel]) showToast("No free sales seats. Move to a bigger office.");
+      if (c.sales.length >= seats("sales")) showToast("No free sales seats. Build more room in the tower.");
       else if (spend(PRICES.sales)) {
         const name = SALES_NAMES[c.sales.length % SALES_NAMES.length];
         c.sales.push(name);
@@ -3786,15 +4132,21 @@ function doAction(action, id) {
       break;
     case "perk": {
       const k = PERKS.find(x => x.key === id);
-      if (k && !c.upgrades[k.key] && c.officeLevel >= k.office && spend(k.cost)) {
-        c.upgrades[k.key] = true;
-        notify("Installed the " + k.name.toLowerCase() + ".", true);
+      if (k && !c.upgrades[k.key] && c.officeLevel >= k.office) {
+        let spot = null;
+        for (let f = 0; f < TOWER_FLOORS[c.officeLevel] && !spot; f++) for (let sl = 0; sl < TOWER_SLOTS && !spot; sl++) if (fits(k.key, f, sl)) spot = [f, sl];
+        if (!spot) showToast("No free slots in the tower for that. Tear something out or move to a bigger office.");
+        else if (placeRoom(k.key, spot[0], spot[1], false)) notify("Installed the " + k.name.toLowerCase() + " on floor " + (spot[0] + 1) + ".", true);
       }
       break;
     }
     case "perkOff": {
       const k = PERKS.find(x => x.key === id);
-      if (k && c.upgrades[k.key]) { c.upgrades[k.key] = false; notify("Canceled the " + k.name.toLowerCase() + ". People noticed.", true); }
+      if (k && c.upgrades[k.key]) {
+        c.upgrades[k.key] = false;
+        if (c.tower) c.tower.rooms = c.tower.rooms.filter(r => r.type !== k.key);
+        notify("Canceled the " + k.name.toLowerCase() + ". People noticed.", true);
+      }
       break;
     }
     case "raise":
@@ -3803,12 +4155,20 @@ function doAction(action, id) {
     case "style":
       if (STYLES[id]) { c.style = id; notify("Switched to " + STYLES[id].label.toLowerCase() + " management.", true); }
       break;
+    case "buildAt": {
+      const [f, sl] = String(id).split(":").map(Number);
+      openBuildSheet(f, sl);
+      return;
+    }
+    case "room":
+      openRoomSheet(id);
+      return;
     case "fire":
       fireStaff(id);
       break;
     case "hireQa":
       if (!c.qas) c.qas = [];
-      if (c.qas.length >= QA_SEATS[c.officeLevel]) showToast("No free tester seats. Move to a bigger office.");
+      if (c.qas.length >= seats("qa")) showToast("No free tester seats. Build more room in the tower.");
       else if (spend(PRICES.qa)) {
         const name = QA_NAMES[c.qas.length % QA_NAMES.length];
         c.qas.push(name);
@@ -3818,7 +4178,7 @@ function doAction(action, id) {
       break;
     case "hireMgr":
       if (!c.mgrs) c.mgrs = [];
-      if (c.mgrs.length >= MGR_SEATS[c.officeLevel]) showToast("No free manager seats. Move to a bigger office.");
+      if (c.mgrs.length >= seats("mgr")) showToast("No free manager seats. Build more room in the tower.");
       else if (spend(PRICES.mgr)) {
         const name = MGR_NAMES[c.mgrs.length % MGR_NAMES.length];
         c.mgrs.push(name);
@@ -3828,7 +4188,7 @@ function doAction(action, id) {
       break;
     case "hireLaw":
       if (!c.laws) c.laws = [];
-      if (c.laws.length >= LAW_SEATS[c.officeLevel]) showToast("No free lawyer seats. Move to a bigger office.");
+      if (c.laws.length >= seats("law")) showToast("No free lawyer seats. Build more room in the tower.");
       else if (spend(PRICES.law)) {
         const name = LAW_NAMES[c.laws.length % LAW_NAMES.length];
         c.laws.push(name);
@@ -3838,7 +4198,7 @@ function doAction(action, id) {
       break;
     case "hireSec":
       if (!c.secs) c.secs = [];
-      if (c.secs.length >= SEC_SEATS[c.officeLevel]) showToast("No free security seats. Move to a bigger office.");
+      if (c.secs.length >= seats("sec")) showToast("No free security seats. Build more room in the tower.");
       else if (spend(PRICES.sec)) {
         const name = SEC_NAMES[c.secs.length % SEC_NAMES.length];
         c.secs.push(name);
@@ -3851,6 +4211,7 @@ function doAction(action, id) {
       if (!x || c.seniors[x.key]) break;
       const hasNeed = x.needs === "dev" ? c.devs.length > 0 : !!c.seniors[x.needs];
       if (!hasNeed || c.officeLevel < x.office) { showToast("Not yet. Check what this hire needs first."); break; }
+      if (staffCount("design") >= seats("design")) { showToast("No free seats in a design loft. Build one in the tower."); break; }
       if (spend(x.cost)) {
         c.seniors[x.key] = true;
         notify("Hired " + x.title.toLowerCase() + " " + x.name + ". " + (x.line === "art" ? "Premium orders are open" : "The " + x.lineName + " is open") + " and customers start asking for it.", true);
