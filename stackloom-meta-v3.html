@@ -287,6 +287,13 @@
   .frm-sg { font-size: 22px; line-height: 1; }
   .frm-sc { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
+  /* Shooter engine screen */
+  .shoot { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--page); user-select: none; -webkit-user-select: none; }
+  .shoot[hidden] { display: none; }
+  #shootStatus { height: 30px; min-height: 30px; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 2px 14px; }
+  #shootCanvas { display: block; image-rendering: pixelated; border-radius: 6px; box-shadow: 0 0 0 3px #2463b0; touch-action: none; }
+  .shoot.premium #shootCanvas { box-shadow: 0 0 0 3px #2463b0, 0 0 18px rgba(47, 180, 230, 0.7); }
+
   /* Card engine screen */
   .cards { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: var(--page); user-select: none; -webkit-user-select: none; }
   .cards[hidden] { display: none; }
@@ -591,6 +598,33 @@
   <div class="dtools">
     <button id="frmHarvestAll" class="btn">Harvest all</button>
     <button id="frmWater" class="btn primary">Beg for water</button>
+  </div>
+</div>
+
+<div id="shoot" class="shoot" hidden>
+  <header class="play-top">
+    <div class="play-title">
+      <div id="shootName" class="row-name"></div>
+      <div id="shootFor" class="quiet"></div>
+    </div>
+    <div class="stat"><span class="label">Score</span><span id="shootScore" class="value">0</span></div>
+    <div class="stat"><span class="label">Lives</span><span id="shootLives" class="value">3</span></div>
+    <button id="shootClose" class="btn">Done</button>
+  </header>
+  <div id="shootStatus" class="doku-status"></div>
+  <main id="shootStage" class="stage">
+    <div id="shootWrap" class="board-wrap">
+      <canvas id="shootCanvas"></canvas>
+      <div id="shootOverlay" class="overlay">
+        <h1 id="shootOverlayTitle"></h1>
+        <p id="shootOverlayText"></p>
+        <button id="shootOverlayButton" class="btn primary">Start</button>
+      </div>
+    </div>
+  </main>
+  <div class="dtools">
+    <button id="shootRestart" class="btn">Restart</button>
+    <button id="shootBomb" class="btn primary">Bomb</button>
   </div>
 </div>
 
@@ -1129,6 +1163,40 @@ const FARM_ROT = {
 };
 
 // ------------------------------------------------------------------
+// TENTH PRODUCT LINE: SHOOTER, THE VERTICAL SCROLLER
+// Built from Dragon Drop. Drag to fly and fire, ground targets scroll
+// down and shoot straight lines at you, bombs clear the screen. The
+// dragon skin keeps the original pixel art. Every other skin is a
+// different thing shooting at a different thing for no reason.
+// ------------------------------------------------------------------
+const SHOOT_THEMES = {
+  dragon: { label: "Dragon Drop", work: 20, pixel: true, sky: "#cfe8ff", speck: "#ffffff", ground: ["#00AA00", "#55FF55", "#AA5500"], shot: "#2463b0", enemyShot: "#FF5555",
+    glyphs: ["🐉", "🛡️", "🗼"], names: ["dragon", "tank", "turret"], colors: ["#AA0000", "#00AA00", "#AA5500"] },
+  space: { label: "Star Swatter", work: 20, pixel: false, sky: "#e8eefc", speck: "#9fb3dc", ground: ["#8f6ee8", "#b9a8f0", "#5b4bdb"], shot: "#2463b0", enemyShot: "#e85fb3",
+    glyphs: ["🚀", "🛸", "👾"], names: ["rocket", "saucer", "space bug"], colors: ["#d0584f", "#7d8b99", "#8f6ee8"] },
+  jet: { label: "Sky Ace", work: 20, pixel: false, sky: "#dff1ff", speck: "#ffffff", ground: ["#4f9d3a", "#8cc84b", "#8b6b3d"], shot: "#2463b0", enemyShot: "#d0584f",
+    glyphs: ["🛩️", "🚁", "🎈"], names: ["plane", "chopper", "balloon"], colors: ["#7d8b99", "#4f9d3a", "#d0584f"] },
+  bee: { label: "Buzz Bomb", work: 18, pixel: false, sky: "#f3fbe8", speck: "#ffffff", ground: ["#6bb34a", "#a3c45a", "#8b6b3d"], shot: "#2463b0", enemyShot: "#8a5cb8",
+    glyphs: ["🐝", "🕷️", "🐸"], names: ["bee", "spider", "frog"], colors: ["#f2c230", "#3a3f47", "#4f9d3a"] },
+  witch: { label: "Broom Patrol", work: 20, pixel: false, sky: "#f1ecfb", speck: "#ffffff", ground: ["#8a5cb8", "#c9b2e8", "#5d4a3a"], shot: "#2463b0", enemyShot: "#f39c4a",
+    glyphs: ["🧙", "🎃", "👻"], names: ["witch", "pumpkin", "ghost"], colors: ["#8a5cb8", "#f39c4a", "#d5dde6"] },
+  pizza: { label: "Delivery Drop", work: 22, pixel: false, sky: "#fff6e8", speck: "#ffffff", ground: ["#d0584f", "#f2c230", "#c68a52"], shot: "#2463b0", enemyShot: "#4f9d3a",
+    glyphs: ["🍕", "🍍", "🐟"], names: ["pizza", "pineapple", "anchovy"], colors: ["#e8a33d", "#f2c230", "#7d8b99"] },
+  gull: { label: "Gull Raid", work: 18, pixel: false, sky: "#e6f6fb", speck: "#ffffff", ground: ["#f2d398", "#f8e6be", "#2fb4e6"], shot: "#2463b0", enemyShot: "#d0584f",
+    glyphs: ["🐦", "🍟", "🏖️"], names: ["seagull", "fries", "beach umbrella"], colors: ["#9aa5b1", "#f2c230", "#d0584f"] },
+  cat: { label: "Laser Cat", work: 20, pixel: false, sky: "#fdf1f6", speck: "#ffffff", ground: ["#ff7eb6", "#ffc4dd", "#c68a52"], shot: "#2463b0", enemyShot: "#d0584f",
+    glyphs: ["🐱", "🐭", "🧶"], names: ["cat", "mouse", "yarn ball"], colors: ["#f39c4a", "#9aa5b1", "#d0584f"] }
+};
+const SHOOT_PACE = {
+  calm: { label: "calm pace", spawn: 1.25, work: 0 },
+  frantic: { label: "frantic pace", spawn: 0.7, work: 3 }
+};
+const SHOOT_BOMBS = {
+  three: { label: "three bombs", bombs: 3, work: 0 },
+  none: { label: "no bombs", bombs: 0, work: 2 }
+};
+
+// ------------------------------------------------------------------
 // Company rules
 // ------------------------------------------------------------------
 const DAY_SECONDS = 45;
@@ -1174,6 +1242,8 @@ const SENIORS = [
     text: "Makes things bounce right. Customers start ordering bubble shooters like Packet Popper and Pup Pop, and bubble builds go faster." },
   { key: "ads", title: "Ad producer", name: "Brisco", cost: 6000, salary: 360, office: 1, needs: "physics", line: "runner", lineName: "Runner line",
     text: "Spent a career making phone ads for games that look nothing like the ads. Customers start ordering math gate runners, the game from the ads, and runner builds go faster." },
+  { key: "arcade", title: "Arcade veteran", name: "Rhonda", cost: 5000, salary: 320, office: 1, needs: "physics", line: "shooter", lineName: "Shooter line",
+    text: "Held the high score at a pizza place for eleven years. Customers start ordering vertical shooters like Dragon Drop and Delivery Drop, and shooter builds go faster." },
   { key: "systems", title: "Systems designer", name: "Halvard", cost: 7500, salary: 420, office: 2, needs: "physics", line: "cards", lineName: "Card line",
     text: "Reads rulebooks for fun. Customers start ordering themed card decks for solitaire and video poker, and deck builds go faster." },
   { key: "art", title: "Art director", name: "Celeste", cost: 12000, salary: 600, office: 2, needs: "systems", line: "art", lineName: "premium line",
@@ -1276,9 +1346,11 @@ function isRunner(order) { return order.line === "runner"; }
 function isMatch(order) { return order.line === "match"; }
 function isJam(order) { return order.line === "jam"; }
 function isMob(order) { return order.line === "mob"; }
+function isShooter(order) { return order.line === "shooter"; }
 function isFarm(order) { return order.line === "farm"; }
 function lookFor(order) {
   if (isMob(order)) return MOB_THEMES[order.theme];
+  if (isShooter(order)) return SHOOT_THEMES[order.theme];
   if (isFarm(order)) return FARM_THEMES[order.theme];
   if (isJam(order)) return JAM_THEMES[order.theme];
   if (isMatch(order)) return MATCH_THEMES[order.theme];
@@ -1296,6 +1368,7 @@ function bugSlots(order) {
   if (isMatch(order)) return MATCH_COLORS[order.colors].count;
   if (isJam(order)) return JAM_THEMES[order.theme].colors.length;
   if (isMob(order)) return MOB_THEMES[order.theme].glyphs.length;
+  if (isShooter(order)) return SHOOT_THEMES[order.theme].glyphs.length;
   if (isFarm(order)) return FARM_THEMES[order.theme].glyphs.length;
   return PIECE_SETS[order.pieceSet].shapes.length;
 }
@@ -1309,6 +1382,7 @@ function orderSpec(order) {
     return parts.join(", ") + prem;
   }
   if (isCards(order)) return lookFor(order).label + " for " + CARD_GAMES[order.game].label + prem;
+  if (isShooter(order)) return lookFor(order).label + " vertical shooter, " + SHOOT_PACE[order.pace].label + ", " + SHOOT_BOMBS[order.bombs].label + prem;
   if (isMob(order)) return lookFor(order).label + " energy and jobs game, " + MOB_ENERGY[order.energy].label + ", " + MOB_LENGTHS[order.length].label + prem;
   if (isFarm(order)) return lookFor(order).label + " crop timer game, " + FARM_SIZES[order.size].label + ", " + FARM_ROT[order.rot].label + prem;
   if (isJam(order)) return lookFor(order).label + " pull out puzzle, " + JAM_SIZES[order.size].label + ", " + JAM_LIVES[order.lives].label + prem;
@@ -1425,6 +1499,25 @@ function buildJamFile(customer, themeKey, sizeKey, livesKey, premium) {
   };
 }
 
+function buildShooterFile(customer, themeKey, paceKey, bombsKey, premium) {
+  const look = SHOOT_THEMES[themeKey];
+  return {
+    product: "shooter",
+    themeName: look.label,
+    customer: customer,
+    premium: !!premium,
+    pixel: look.pixel,
+    sky: look.sky,
+    speck: look.speck,
+    ground: look.ground.slice(),
+    shot: look.shot,
+    enemyShot: look.enemyShot,
+    spawn: SHOOT_PACE[paceKey].spawn,
+    bombs: SHOOT_BOMBS[bombsKey].bombs,
+    sprites: look.names.map((name, i) => ({ name: name, glyph: look.glyphs[i], color: look.colors[i] }))
+  };
+}
+
 function buildMobFile(customer, themeKey, energyKey, lengthKey, premium) {
   const look = MOB_THEMES[themeKey];
   return {
@@ -1460,6 +1553,7 @@ function buildFarmFile(customer, themeKey, sizeKey, rotKey, premium) {
 }
 
 function buildThemeFile(order) {
+  if (isShooter(order)) return buildShooterFile(order.customer, order.theme, order.pace, order.bombs, order.premium);
   if (isMob(order)) return buildMobFile(order.customer, order.theme, order.energy, order.length, order.premium);
   if (isFarm(order)) return buildFarmFile(order.customer, order.theme, order.size, order.rot, order.premium);
   if (isJam(order)) return buildJamFile(order.customer, order.theme, order.size, order.lives, order.premium);
@@ -1504,6 +1598,11 @@ function withBug(file, bug) {
   if (copy.product === "bubble") {
     copy.bubbles[bug.pieceIndex].glyph = "?";
     copy.bubbles[bug.pieceIndex].color = "#c3c8ca";
+    return copy;
+  }
+  if (copy.product === "shooter") {
+    copy.sprites[bug.pieceIndex].glyph = "?";
+    copy.sprites[bug.pieceIndex].color = "#c3c8ca";
     return copy;
   }
   if (copy.product === "mob") {
@@ -1611,6 +1710,15 @@ const HOUSE_JAM = {
   file: buildJamFile("The studio", "cars", "small", "forgiving", false)
 };
 
+const HOUSE_SHOOTER = {
+  id: "houseshooter",
+  customer: "the studio",
+  spec: "Dragon Drop, the sample vertical shooter every studio keeps on hand",
+  day: 0,
+  bug: false,
+  file: buildShooterFile("The studio", "dragon", "calm", "three", false)
+};
+
 const HOUSE_MOB = {
   id: "housemob",
   customer: "the studio",
@@ -1651,6 +1759,7 @@ function makeOffer() {
   if (lineOpen("match")) lines.push("match");
   if (lineOpen("jam")) lines.push("jam");
   if (lineOpen("mob")) lines.push("mob");
+  if (lineOpen("shooter")) lines.push("shooter");
   if (lineOpen("farm")) lines.push("farm");
   const line = pick(lines);
   let order;
@@ -1661,6 +1770,7 @@ function makeOffer() {
   else if (line === "match") order = makeMatchOffer();
   else if (line === "jam") order = makeJamOffer();
   else if (line === "mob") order = makeMobOffer();
+  else if (line === "shooter") order = makeShooterOffer();
   else if (line === "farm") order = makeFarmOffer();
   else order = makeBlockOffer();
   if (lineOpen("art") && Math.random() < 0.3) {
@@ -1736,6 +1846,21 @@ function makeMatchOffer() {
   };
   order.work = MATCH_THEMES[order.theme].work + MATCH_COLORS[order.colors].work + MATCH_MOVES[order.moves].work;
   return priceOrder(order, 11);
+}
+
+function makeShooterOffer() {
+  const order = {
+    id: company.nextId++,
+    line: "shooter",
+    customer: pick(CUSTOMERS),
+    theme: pick(Object.keys(SHOOT_THEMES)),
+    pace: pick(["calm", "calm", "frantic"]),
+    bombs: pick(["three", "three", "none"]),
+    status: "offer", progress: 0, terminal: -1, builtBy: -1, bug: null, tested: false,
+    expiresAt: company.time + 40, deadline: 0, readyAt: 0
+  };
+  order.work = SHOOT_THEMES[order.theme].work + SHOOT_PACE[order.pace].work + SHOOT_BOMBS[order.bombs].work;
+  return priceOrder(order, 12);
 }
 
 function makeMobOffer() {
@@ -2022,7 +2147,7 @@ function strip(colors) {
 }
 
 function motifLine(order) {
-  const motifs = (isDoku(order) || isBubble(order) || isCards(order) || isRunner(order) || isMatch(order) || isJam(order) || isMob(order) || isFarm(order) ? lookFor(order).glyphs : THEMES[order.theme].motifs).filter(Boolean);
+  const motifs = (isDoku(order) || isBubble(order) || isCards(order) || isRunner(order) || isMatch(order) || isJam(order) || isMob(order) || isFarm(order) || isShooter(order) ? lookFor(order).glyphs : THEMES[order.theme].motifs).filter(Boolean);
   return motifs.length ? `<div class="motifs">${motifs.join(" ")}</div>` : "";
 }
 
@@ -2258,9 +2383,9 @@ function renderOffice() {
 }
 
 function renderGames() {
-  let html = `<p class="note">Every block game runs on the block engine, every doku on the doku engine, every bubble shooter on the bubble engine, every deck on the deck engine, every gate runner on the runner engine, every match three on the match engine, every pull out puzzle on the jam engine, every energy and jobs game on the mob engine, and every crop timer on the farm engine. The only difference between products on the same engine is the theme file. Premium products are the same file with one flag flipped and a bigger invoice. Tap View file to see one.</p>`;
+  let html = `<p class="note">Every block game runs on the block engine, every doku on the doku engine, every bubble shooter on the bubble engine, every deck on the deck engine, every gate runner on the runner engine, every match three on the match engine, every pull out puzzle on the jam engine, every energy and jobs game on the mob engine, every crop timer on the farm engine, and every vertical shooter on the shooter engine. The only difference between products on the same engine is the theme file. Premium products are the same file with one flag flipped and a bigger invoice. Tap View file to see one.</p>`;
   html += renderHackCard();
-  [HOUSE_GAME, HOUSE_DOKU, HOUSE_BUBBLE, HOUSE_DECK, HOUSE_POKER, HOUSE_RUNNER, HOUSE_MATCH, HOUSE_JAM, HOUSE_MOB, HOUSE_FARM, ...company.catalog].forEach(game => {
+  [HOUSE_GAME, HOUSE_DOKU, HOUSE_BUBBLE, HOUSE_DECK, HOUSE_POKER, HOUSE_RUNNER, HOUSE_MATCH, HOUSE_JAM, HOUSE_MOB, HOUSE_FARM, HOUSE_SHOOTER, ...company.catalog].forEach(game => {
     html += `
       <article class="order">
         ${strip(fileColors(game.file))}
@@ -2341,6 +2466,7 @@ function gameById(id) {
   if (id === "housematch") return HOUSE_MATCH;
   if (id === "housejam") return HOUSE_JAM;
   if (id === "housemob") return HOUSE_MOB;
+  if (id === "houseshooter") return HOUSE_SHOOTER;
   if (id === "housefarm") return HOUSE_FARM;
   return company.catalog.find(game => game.id === id);
 }
@@ -2351,6 +2477,7 @@ function fileColors(file) {
   if (file.product === "match") return file.candies.map(p => p.color);
   if (file.product === "jam") return file.kinds.map(p => p.color);
   if (file.product === "mob") return file.jobs.map(p => p.color);
+  if (file.product === "shooter") return file.sprites.map(p => p.color).concat([file.sky, file.shot]);
   if (file.product === "farm") return file.crops.map(p => p.color);
   if (file.product === "runner") return [file.goodGate, file.badGate, file.road, file.ground, file.sky];
   if (file.product === "cards") return file.suits.map(suit => suit.color).concat(["#2463b0"]);
@@ -2870,6 +2997,7 @@ function openPlay(file, context) {
   else if (file.product === "match") openMatch(file, context);
   else if (file.product === "jam") openJam(file, context);
   else if (file.product === "mob") openMob(file, context);
+  else if (file.product === "shooter") openShooter(file, context);
   else if (file.product === "farm") openFarm(file, context);
   else openBlocks(file, context);
 }
@@ -2924,6 +3052,9 @@ function finishPlayTest(orderId) {
     } else if (isBubble(order)) {
       const bubbleName = BUBBLE_THEMES[order.theme].names[order.bug.pieceIndex];
       notify("Play test found a bug. The " + bubbleName + " bubble had gone grey with a question mark on it. Fixed before shipping.", true);
+    } else if (isShooter(order)) {
+      const spriteName = SHOOT_THEMES[order.theme].names[order.bug.pieceIndex];
+      notify("Play test found a bug. The " + spriteName + " showed up as a question mark. Fixed before shipping.", true);
     } else if (isMob(order)) {
       const jobName = MOB_THEMES[order.theme].names[order.bug.pieceIndex];
       notify("Play test found a bug. The " + jobName.toLowerCase() + " job had gone grey with a question mark on it. Fixed before shipping.", true);
@@ -5552,6 +5683,305 @@ function closeFarm() {
   render();
 }
 document.getElementById("frmClose").addEventListener("click", closeFarm);
+
+// ------------------------------------------------------------------
+// THE SHOOTER ENGINE
+// Dragon Drop's loop, reading a skin file. Drag to move and fire, tap
+// Bomb to clear the screen. Runs at a fixed sixty steps a second so a
+// fast phone screen does not double the speed.
+// ------------------------------------------------------------------
+const SH_W = 240, SH_H = 320;
+const SH_PAL = {
+  GREEN: "#00AA00", RED: "#AA0000", PURPLE: "#AA00AA", BROWN: "#AA5500", DGRAY: "#555555",
+  LGREEN: "#55FF55", LRED: "#FF5555", LPURPLE: "#FF55FF", YELLOW: "#FFFF55"
+};
+
+const shRoot = document.getElementById("shoot");
+const shStage = document.getElementById("shootStage");
+const shWrap = document.getElementById("shootWrap");
+const shCanvas = document.getElementById("shootCanvas");
+const shCtx = shCanvas.getContext("2d");
+const shOverlay = document.getElementById("shootOverlay");
+const shStatusEl = document.getElementById("shootStatus");
+
+let shOpen = false;
+let sh = null;
+
+function shRnd(n) { return Math.floor(Math.random() * n); }
+function shPx(color, x, y, w, h) { shCtx.fillStyle = color; shCtx.fillRect(Math.round(x), Math.round(y), w, h); }
+function shStatus(text, kind) {
+  shStatusEl.textContent = text || "";
+  shStatusEl.className = "doku-status" + (kind ? " " + kind : "");
+}
+function shShowOverlay(title, text, label) {
+  document.getElementById("shootOverlayTitle").textContent = title;
+  document.getElementById("shootOverlayText").textContent = text;
+  document.getElementById("shootOverlayButton").textContent = label;
+  shOverlay.hidden = false;
+}
+function shStats() {
+  document.getElementById("shootScore").textContent = sh.score;
+  document.getElementById("shootLives").textContent = sh.health;
+}
+function shInfo() { shStatus("Level " + sh.level + ". Bombs " + sh.bombs + ". Best " + sh.hi + ".", ""); }
+
+function shGlyph(glyph, x, y, size, glow) {
+  const ctx = shCtx;
+  if (glow) { ctx.shadowColor = sh.file.shot; ctx.shadowBlur = 6; }
+  ctx.font = size + "px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#1c2833";
+  ctx.fillText(glyph, Math.round(x), Math.round(y));
+  ctx.shadowBlur = 0; ctx.shadowColor = "transparent";
+}
+
+// The original Dragon Drop pixel art, kept for the dragon skin.
+function shDrawDragon(cx, cy) {
+  const C = SH_PAL, x = cx - 7, y = cy - 9;
+  shPx(C.PURPLE, x - 8, y + 4, 8, 3); shPx(C.PURPLE, x - 10, y + 7, 10, 3); shPx(C.PURPLE, x - 7, y + 10, 6, 2);
+  shPx(C.PURPLE, x + 14, y + 4, 8, 3); shPx(C.PURPLE, x + 14, y + 7, 10, 3); shPx(C.PURPLE, x + 15, y + 10, 6, 2);
+  shPx(C.LPURPLE, x - 7, y + 5, 4, 2); shPx(C.LPURPLE, x + 17, y + 5, 4, 2);
+  shPx(C.RED, x + 4, y + 6, 7, 9); shPx(C.LRED, x + 5, y + 1, 5, 6); shPx(C.RED, x + 6, y - 1, 3, 3);
+  shPx(C.YELLOW, x + 7, y - 4, 2, 4); shPx(C.LRED, x + 6, y - 6, 3, 3);
+  shPx(C.YELLOW, x + 5, y + 2, 2, 2); shPx(C.YELLOW, x + 8, y + 2, 2, 2);
+  shPx(C.RED, x + 6, y + 14, 3, 4); shPx(C.BROWN, x + 7, y + 17, 2, 2);
+}
+function shDrawTank(cx, cy) {
+  const C = SH_PAL;
+  shPx(C.DGRAY, cx - 7, cy - 4, 14, 8); shPx(C.GREEN, cx - 6, cy - 3, 12, 6);
+  shPx(C.LGREEN, cx - 3, cy - 4, 6, 5); shPx(C.LGREEN, cx - 1, cy - 9, 2, 6);
+}
+function shDrawTurret(cx, cy) {
+  const C = SH_PAL;
+  shPx(C.BROWN, cx - 4, cy - 3, 8, 6); shPx(C.YELLOW, cx - 1, cy - 8, 3, 6);
+}
+
+function shDrawHero(x, y) {
+  const g = sh.file.sprites[0].glyph;
+  if (sh.file.pixel && g !== "?") shDrawDragon(x, y);
+  else shGlyph(g, x, y, 20, sh.file.premium);
+}
+function shDrawEnemy(kind, x, y) {
+  const g = sh.file.sprites[kind].glyph;
+  if (sh.file.pixel && g !== "?") { if (kind === 1) shDrawTank(x, y); else shDrawTurret(x, y); }
+  else shGlyph(g, x, y, kind === 1 ? 18 : 15, sh.file.premium);
+}
+
+function shBoom(x, y, r) { sh.booms.push({ x: x, y: y, r: r, t: r * 2, maxT: r * 2 }); }
+function shDrawBoom(bm) {
+  const age = bm.maxT - bm.t;
+  const cols = [SH_PAL.YELLOW, SH_PAL.LRED, SH_PAL.RED, SH_PAL.BROWN];
+  const s = bm.r - (age >> 1);
+  if (s > 0) shPx(cols[Math.min(age >> 1, 3)], bm.x - s / 2, bm.y - s / 2, s, s);
+}
+
+function shStart() {
+  sh.px = SH_W / 2; sh.py = SH_H * 0.6;
+  sh.iframes = 0; sh.health = 3; sh.bombs = sh.file.bombs;
+  sh.score = 0; sh.level = 1; sh.kills = 0; sh.frame = 0; sh.lastShot = 0;
+  sh.bullets = []; sh.ebullets = []; sh.tanks = []; sh.turrets = []; sh.booms = [];
+  sh.specks = Array.from({ length: 40 }, () => ({ x: shRnd(SH_W), y: shRnd(SH_H), spd: 0.3 + Math.random() * 0.7 }));
+  sh.state = "playing";
+  shOverlay.hidden = true;
+  shInfo();
+  shStats();
+}
+
+function shHurt() {
+  shBoom(sh.px, sh.py, 10);
+  sh.health--;
+  shStats();
+  if (sh.health <= 0) {
+    sh.health = 0;
+    sh.hi = Math.max(sh.hi, sh.score);
+    sh.state = "dead";
+    const name = sh.file.sprites[0].name;
+    shShowOverlay("Game over", "Score " + sh.score + ". Best " + sh.hi + ". The " + name + " went down on level " + sh.level + ".", "Play again");
+  } else sh.iframes = 80;
+}
+
+// Straight shots snapped to eight directions, no homing, easy to sidestep.
+function shFireAt(x, y, spd) {
+  const a = Math.round(Math.atan2(sh.py - y, sh.px - x) / (Math.PI / 4)) * (Math.PI / 4);
+  sh.ebullets.push({ x: x, y: y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd });
+}
+
+function shBomb() {
+  if (!sh || sh.state !== "playing" || sh.bombs <= 0) return;
+  sh.bombs--;
+  sh.tanks.forEach(tk => { shBoom(tk.x, tk.y, 14); sh.score += 100; sh.kills++; tk.dead = true; });
+  sh.turrets.forEach(tr => { shBoom(tr.x, tr.y, 10); sh.score += 50; sh.kills++; tr.dead = true; });
+  sh.ebullets = [];
+  shStats();
+  shInfo();
+}
+
+function shStep() {
+  sh.frame++;
+  const SPD = 2.5;
+  const tc = sh.touch;
+  if (tc) {
+    const dx = tc.x - sh.px, dy = tc.y - sh.py;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 4) {
+      const move = Math.min(dist * 0.18, SPD * 1.5);
+      sh.px += dx / dist * move;
+      sh.py += dy / dist * move;
+    }
+    sh.px = Math.max(10, Math.min(SH_W - 10, sh.px));
+    sh.py = Math.max(16, Math.min(SH_H - 10, sh.py));
+    if (sh.frame - sh.lastShot >= 8) {
+      sh.lastShot = sh.frame;
+      sh.bullets.push({ x: sh.px, y: sh.py - 12, vy: -7 });
+      if (sh.level >= 3) {
+        sh.bullets.push({ x: sh.px - 7, y: sh.py - 10, vy: -7 });
+        sh.bullets.push({ x: sh.px + 7, y: sh.py - 10, vy: -7 });
+      }
+    }
+  }
+  const prevLevel = sh.level;
+  sh.level = 1 + Math.floor(sh.kills / 20);
+  if (sh.level !== prevLevel) shInfo();
+  const scroll = 0.9 + sh.level * 0.1;
+  const tankEvery = Math.round(150 * sh.file.spawn), turretEvery = Math.round(110 * sh.file.spawn);
+  if (sh.frame % tankEvery === 0) {
+    const hp = sh.level >= 2 ? 2 : 1;
+    sh.tanks.push({ x: shRnd(SH_W - 40) + 20, y: -12, hp: hp, stimer: 120 + shRnd(80), dead: false });
+  }
+  if (sh.frame % turretEvery === 0) sh.turrets.push({ x: shRnd(SH_W - 40) + 20, y: -8, stimer: 100 + shRnd(80), dead: false });
+
+  sh.tanks.forEach(tk => {
+    tk.y += scroll;
+    if (tk.dead) return;
+    if (--tk.stimer <= 0) { tk.stimer = 120 + shRnd(80); shFireAt(tk.x, tk.y, 2.8); }
+    sh.bullets = sh.bullets.filter(bl => {
+      if (!tk.dead && Math.abs(bl.x - tk.x) < 10 && Math.abs(bl.y - tk.y) < 7) {
+        tk.hp--; shBoom(bl.x, bl.y, 5);
+        if (tk.hp <= 0) { tk.dead = true; shBoom(tk.x, tk.y, 14); sh.score += 100; sh.kills++; }
+        return false;
+      }
+      return true;
+    });
+  });
+  sh.tanks = sh.tanks.filter(tk => tk.y < SH_H + 20 && !tk.dead);
+
+  sh.turrets.forEach(tr => {
+    tr.y += scroll;
+    if (tr.dead) return;
+    if (--tr.stimer <= 0) { tr.stimer = 100 + shRnd(80); shFireAt(tr.x, tr.y, 3.0); }
+    sh.bullets = sh.bullets.filter(bl => {
+      if (!tr.dead && Math.abs(bl.x - tr.x) < 7 && Math.abs(bl.y - tr.y) < 7) {
+        tr.dead = true; shBoom(tr.x, tr.y, 10); sh.score += 50; sh.kills++; return false;
+      }
+      return true;
+    });
+  });
+  sh.turrets = sh.turrets.filter(tr => tr.y < SH_H + 20 && !tr.dead);
+
+  sh.bullets = sh.bullets.filter(bl => { bl.y += bl.vy; return bl.y > -4; });
+  sh.ebullets = sh.ebullets.filter(bl => {
+    bl.x += bl.vx; bl.y += bl.vy;
+    if (sh.state === "playing" && sh.iframes === 0 && Math.abs(bl.x - sh.px) < 7 && Math.abs(bl.y - sh.py) < 7) { shHurt(); return false; }
+    return bl.x > -4 && bl.x < SH_W + 4 && bl.y > -4 && bl.y < SH_H + 4;
+  });
+  sh.booms.forEach(bm => { bm.t--; });
+  sh.booms = sh.booms.filter(bm => bm.t > 0);
+  if (sh.iframes > 0) sh.iframes--;
+  sh.specks.forEach(s => { s.y += s.spd; if (s.y > SH_H) { s.y = 0; s.x = shRnd(SH_W); } });
+}
+
+function shDraw() {
+  const f = sh.file;
+  shPx(f.sky, 0, 0, SH_W, SH_H);
+  sh.specks.forEach(s => { shCtx.fillStyle = f.speck; shCtx.fillRect(s.x, Math.round(s.y), s.spd > 0.7 ? 3 : 2, s.spd > 0.7 ? 2 : 1); });
+  shPx(f.ground[0], 0, SH_H - 14, SH_W, 5);
+  shPx(f.ground[1], 0, SH_H - 9, SH_W, 3);
+  shPx(f.ground[2], 0, SH_H - 6, SH_W, 6);
+  sh.tanks.forEach(tk => shDrawEnemy(1, tk.x, tk.y));
+  sh.turrets.forEach(tr => shDrawEnemy(2, tr.x, tr.y));
+  sh.bullets.forEach(bl => shPx(f.shot, bl.x - 1, bl.y - 5, 2, 6));
+  sh.ebullets.forEach(bl => shPx(f.enemyShot, bl.x - 2, bl.y - 2, 4, 4));
+  sh.booms.forEach(shDrawBoom);
+  const blink = sh.iframes > 0 && Math.floor(sh.iframes / 5) % 2 === 0;
+  if (sh.state !== "dead" && !blink) shDrawHero(sh.px, sh.py);
+}
+
+let shLast = 0, shAcc = 0;
+function shFrame(time) {
+  if (!shOpen || !sh) return;
+  const dt = shLast ? Math.min(time - shLast, 100) : 0;
+  shLast = time;
+  if (sh.state === "playing") {
+    shAcc += dt;
+    let lastScore = sh.score;
+    while (shAcc >= 1000 / 60) { shAcc -= 1000 / 60; shStep(); if (sh.state !== "playing") break; }
+    if (sh.score !== lastScore) shStats();
+  }
+  shDraw();
+  requestAnimationFrame(shFrame);
+}
+
+function shResize() {
+  if (!shOpen || !sh) return;
+  const availW = shStage.clientWidth - 16, availH = shStage.clientHeight - 16;
+  const sc = Math.max(1, Math.min(availW / SH_W, availH / SH_H));
+  const cw = Math.floor(SH_W * sc), ch = Math.floor(SH_H * sc);
+  shWrap.style.width = cw + "px"; shWrap.style.height = ch + "px";
+  shCanvas.style.width = cw + "px"; shCanvas.style.height = ch + "px";
+  sh.scale = sc;
+}
+
+function shToGame(e) {
+  const rect = shCanvas.getBoundingClientRect();
+  return { x: (e.clientX - rect.left) / sh.scale, y: (e.clientY - rect.top) / sh.scale };
+}
+shCanvas.addEventListener("pointerdown", e => {
+  if (!sh || sh.state !== "playing") return;
+  e.preventDefault();
+  shCanvas.setPointerCapture(e.pointerId);
+  sh.touch = shToGame(e);
+});
+shCanvas.addEventListener("pointermove", e => { if (sh && sh.touch) sh.touch = shToGame(e); });
+shCanvas.addEventListener("pointerup", () => { if (sh) sh.touch = null; });
+shCanvas.addEventListener("pointercancel", () => { if (sh) sh.touch = null; });
+
+document.getElementById("shootBomb").addEventListener("click", shBomb);
+document.getElementById("shootRestart").addEventListener("click", () => { if (sh && sh.state !== "ready") shStart(); });
+document.getElementById("shootOverlayButton").addEventListener("click", () => { if (sh) shStart(); });
+
+function openShooter(file, context) {
+  sh = { file: file, ctx: context || {}, state: "ready", hi: 0, score: 0, health: 3, bombs: file.bombs, level: 1, kills: 0, frame: 0, lastShot: 0,
+    px: SH_W / 2, py: SH_H * 0.6, iframes: 0, bullets: [], ebullets: [], tanks: [], turrets: [], booms: [], specks: [], touch: null, scale: 1 };
+  sh.specks = Array.from({ length: 40 }, () => ({ x: shRnd(SH_W), y: shRnd(SH_H), spd: 0.3 + Math.random() * 0.7 }));
+  shOpen = true;
+  shRoot.classList.toggle("premium", !!file.premium);
+  shCanvas.width = SH_W; shCanvas.height = SH_H;
+  shCtx.imageSmoothingEnabled = false;
+  document.getElementById("shootName").textContent = file.themeName + (file.premium ? " premium" : "");
+  document.getElementById("shootFor").textContent = "For " + file.customer;
+  shStatus("");
+  shShowOverlay(file.themeName,
+    sh.ctx.orderId != null
+      ? "Play this build the way the customer will. If a sprite looks wrong, that is a bug."
+      : "Drag to fly and fire. Dodge the straight shots. Bomb clears the screen.",
+    "Start");
+  shRoot.hidden = false;
+  shStats();
+  requestAnimationFrame(() => { shResize(); shLast = 0; shAcc = 0; requestAnimationFrame(shFrame); });
+}
+
+function closeShooter() {
+  shOpen = false;
+  shRoot.hidden = true;
+  const orderId = sh ? sh.ctx.orderId : null;
+  sh = null;
+  finishPlayTest(orderId);
+  lastTick = performance.now();
+  render();
+}
+document.getElementById("shootClose").addEventListener("click", closeShooter);
+window.addEventListener("resize", shResize);
 
 // ------------------------------------------------------------------
 // THE DECK ENGINE

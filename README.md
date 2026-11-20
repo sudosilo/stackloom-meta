@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-19, v2026.11.19.1. Added the Mob line and the Farm line, the energy and jobs game and the crop timer game, opened by hiring a growth hacker and a retention designer.
+Latest change. 2026-11-19, v2026.11.19.2. Added the Shooter line built from Dragon Drop, opened by hiring an arcade veteran.
 
 Full history is in CHANGELOG.md.
