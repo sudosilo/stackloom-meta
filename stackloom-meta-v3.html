@@ -1852,18 +1852,18 @@ const TOWER_SLOTS = 6;
 const TOWER_FLOORS = [1, 2, 4, 6];
 const ROOM_TYPES = [
   { key: "terminal", name: "Terminal bay", w: 2, cost: 300, role: "terminal", seats: 3, color: "#dfe9f6", text: "Holds three terminals, the machines that build games." },
-  { key: "server", name: "Server closet", w: 1, cost: 250, role: "agent", seats: 1, color: "#d9dde3", text: "Room for one agent, the AI program that runs up to three terminals." },
+  { key: "server", short: "Servers", name: "Server closet", w: 1, cost: 250, role: "agent", seats: 1, color: "#d9dde3", text: "Room for one agent, the AI program that runs up to three terminals." },
   { key: "dev", name: "Dev pod", w: 2, cost: 600, role: "dev", seats: 2, color: "#d8f0ea", text: "Desks for two devs who supervise agents." },
-  { key: "qa", name: "QA room", w: 1, cost: 300, role: "qa", seats: 2, color: "#ddf0d9", text: "Two game testers who play, fix, and ship builds." },
-  { key: "mgr", name: "Manager office", w: 1, cost: 500, role: "mgr", seats: 1, color: "#f3e7cc", text: "One manager who runs testers and the house rules." },
-  { key: "sec", name: "Hacker den", w: 1, cost: 500, role: "sec", seats: 2, color: "#e4e0fa", text: "Two security engineers. Patches, and mischief when there is nothing to patch." },
-  { key: "law", name: "Legal office", w: 1, cost: 600, role: "law", seats: 2, color: "#e3e6ea", text: "Two lawyers who shrink fines and mail cease and desist letters." },
-  { key: "mkt", name: "Marketing studio", w: 1, cost: 500, role: "mkt", seats: 2, color: "#f8dcec", text: "Two marketers who run ad campaigns." },
+  { key: "qa", short: "QA", name: "QA room", w: 1, cost: 300, role: "qa", seats: 2, color: "#ddf0d9", text: "Two game testers who play, fix, and ship builds." },
+  { key: "mgr", short: "Boss", name: "Manager office", w: 1, cost: 500, role: "mgr", seats: 1, color: "#f3e7cc", text: "One manager who runs testers and the house rules." },
+  { key: "sec", short: "Hackers", name: "Hacker den", w: 1, cost: 500, role: "sec", seats: 2, color: "#e4e0fa", text: "Two security engineers. Patches, and mischief when there is nothing to patch." },
+  { key: "law", short: "Legal", name: "Legal office", w: 1, cost: 600, role: "law", seats: 2, color: "#e3e6ea", text: "Two lawyers who shrink fines and mail cease and desist letters." },
+  { key: "mkt", short: "Ads", name: "Marketing studio", w: 1, cost: 500, role: "mkt", seats: 2, color: "#f8dcec", text: "Two marketers who run ad campaigns." },
   { key: "sales", name: "Sales floor", w: 2, cost: 400, role: "sales", seats: 3, color: "#f6dad6", text: "Three salespeople working the phones. Closers get coffee." },
   { key: "design", name: "Design loft", w: 2, cost: 800, role: "design", seats: 4, color: "#fbe6d1", text: "Four seats for senior hires, the ones who open new product lines." },
-  { key: "soda", name: "Soda machine", w: 1, cost: 200, perk: "soda", glyph: "🥤", color: "#fdf3df", text: "Perk. Sugar water at cost." },
-  { key: "snacks", name: "Snack machine", w: 1, cost: 300, perk: "snacks", glyph: "🍫", color: "#fdf3df", text: "Perk. Chips and candy that sometimes get stuck." },
-  { key: "coffee", name: "Coffee bar", w: 1, cost: 900, perk: "coffee", glyph: "☕", color: "#f6efe0", text: "Perk. Coffee is for closers." },
+  { key: "soda", short: "Soda", name: "Soda machine", w: 1, cost: 200, perk: "soda", glyph: "🥤", color: "#fdf3df", text: "Perk. Sugar water at cost." },
+  { key: "snacks", short: "Snacks", name: "Snack machine", w: 1, cost: 300, perk: "snacks", glyph: "🍫", color: "#fdf3df", text: "Perk. Chips and candy that sometimes get stuck." },
+  { key: "coffee", short: "Coffee", name: "Coffee bar", w: 1, cost: 900, perk: "coffee", glyph: "☕", color: "#f6efe0", text: "Perk. Coffee is for closers." },
   { key: "lounge", name: "Lounge", w: 2, cost: 2500, perk: "lounge", glyph: "🛋️", color: "#eef4fb", text: "Perk. Couches, a TV, and a foosball table." },
   { key: "catering", name: "Cafeteria", w: 2, cost: 1200, perk: "catering", glyph: "🍱", color: "#f4f8ec", text: "Perk. Daily catering for the whole team." }
 ];
@@ -2040,7 +2040,7 @@ function renderTower() {
     const t = roomType(r.type);
     const x = X0 + r.slot * SW, y = ROOF + (floors - 1 - r.floor) * FH, w = t.w * SW;
     svg += `<g data-do="room" data-id="${r.id}"><rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${FH - 6}" fill="${t.color}" stroke="#1c2833" stroke-width="1.5"/>`;
-    svg += `<text x="${x + 6}" y="${y + 12}" font-size="7.5" font-weight="700" fill="#1c2833">${t.name.toUpperCase()}</text>`;
+    svg += `<text x="${x + 6}" y="${y + 12}" font-size="7.5" font-weight="700" fill="#1c2833">${(t.w === 1 && t.short ? t.short : t.name).toUpperCase()}</text>`;
     const base = y + FH - 6;
     if (t.perk) {
       svg += `<text x="${x + w / 2}" y="${base - 10}" font-size="22" text-anchor="middle">${t.glyph}</text>`;
