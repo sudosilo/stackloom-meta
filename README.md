@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.13. Added an elevator to the tower.
+Latest change. 2026-11-20, v2026.11.20.14. Tap any pod on the floor plan to hire into it or build more room for it.
 
 Full history is in CHANGELOG.md.

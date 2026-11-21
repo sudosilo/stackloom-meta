@@ -814,7 +814,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v4.1";
+const VERSION = "stackloom-meta v4.2";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -2110,7 +2110,7 @@ function renderTowerTab() {
   const built = TOWER_FLOORS[c.officeLevel];
   const rows = marketRows();
   let html = `<h2 class="section-title">${office().name}, ${built} ${plural(built, "floor")}</h2>
-    <p class="note">Tap an empty slot to build a room. Rooms set how many people you can hire and switch on perks. Tap a room to see it or tear it out. Moving to a bigger office on the Office tab adds floors.</p>
+    <p class="note">Tap an empty slot to build a room. On the Team tab, tap any pod on the floor plan to hire into it or build more room for it. Rooms set how many people you can hire and switch on perks. Tap a room to see it or tear it out. Moving to a bigger office on the Office tab adds floors.</p>
     <div class="tower">${renderTower()}</div>
     <h2 class="section-title spaced">The competition</h2>
     <p class="note">Every studio's tower on the skyline, sized by how many games it has shipped. Out ship them and your tower is the tallest one on the block.</p>
@@ -2142,6 +2142,59 @@ function openBuildSheet(floor, slot) {
   sheet.hidden = false;
 }
 
+// Tapping a pod on the Team tab floor plan opens this: who sits there,
+// a hire button when a seat is open, and a build button for more room.
+const POD_INFO = {
+  machines: { name: "Machine room", hires: [["agent", "hireAgent", "an agent"], ["terminal", "buyTerminal", "a terminal"]], rooms: ["server", "terminal"] },
+  dev: { name: "Dev pod", hires: [["dev", "hireDev", "a dev"]], rooms: ["dev"] },
+  qa: { name: "QA pod", hires: [["qa", "hireQa", "a game tester"]], rooms: ["qa"] },
+  mgr: { name: "Manager pod", hires: [["mgr", "hireMgr", "a manager"]], rooms: ["mgr"] },
+  sec: { name: "Hacker pod", hires: [["sec", "hireSec", "a security engineer"]], rooms: ["sec"] },
+  law: { name: "Legal pod", hires: [["law", "hireLaw", "a lawyer"]], rooms: ["law"] },
+  mkt: { name: "Marketing pod", hires: [["mkt", "hireMkt", "a marketer"]], rooms: ["mkt"] },
+  sales: { name: "Sales pod", hires: [["sales", "hireSales", "a salesperson"]], rooms: ["sales"] },
+  design: { name: "Design pod", hires: [], rooms: ["design"] }
+};
+function hirePrice(role) { return role === "terminal" ? terminalPrice() : PRICES[role]; }
+function freeSpot(type) {
+  for (let f = 0; f < TOWER_FLOORS[company.officeLevel]; f++) for (let sl = 0; sl < TOWER_SLOTS; sl++) if (fits(type, f, sl)) return [f, sl];
+  return null;
+}
+function openPodSheet(kind) {
+  const c = company;
+  const info = POD_INFO[kind];
+  if (!info) return;
+  let html = "";
+  info.hires.forEach(([role, action, label]) => {
+    const have = role === "terminal" ? c.terminals.length : staffCount(role);
+    const room = seats(role);
+    const noun = label.replace(/^(a|an) /, "");
+    html += `<p class="note">${role === "terminal" ? "Terminal spots" : noun[0].toUpperCase() + noun.slice(1) + " seats"}: ${have} of ${room} filled.</p>`;
+    if (room === 0) html += `<button class="btn wide" disabled style="margin-bottom:10px">No seats yet. Build a room below first.</button>`;
+    else if (have < room) html += `<button class="btn primary wide" data-podhire="${action}" style="margin-bottom:10px">${role === "terminal" ? "Buy" : "Hire"} ${label} for ${cash(hirePrice(role))}</button>`;
+    else html += `<button class="btn wide" disabled style="margin-bottom:10px">Every seat is full. Build more room first.</button>`;
+  });
+  if (kind === "design") {
+    const open = seats("design") - staffCount("design");
+    html += `<p class="note">Senior hires sit here. ${staffCount("design")} of ${seats("design")} seats filled. Each senior hire opens a product line, and they are hired from the Senior hires list.</p>`;
+    html += `<button class="btn primary wide" data-goto="sec-design" style="margin-bottom:10px" ${open > 0 ? "" : ""}>Go to the senior hires</button>`;
+  }
+  info.rooms.forEach(type => {
+    const t = roomType(type);
+    const spot = freeSpot(type);
+    html += spot
+      ? `<button class="btn wide" data-podbuild="${type}" style="margin-bottom:10px">Build a ${t.name} on floor ${spot[0] + 1} for ${cash(t.cost)}, adds ${t.role === "terminal" ? t.seats + " terminal spots" : t.seats + " " + plural(t.seats, "seat")}</button>`
+      : `<button class="btn wide" disabled style="margin-bottom:10px">No room in the tower for a ${t.name}. Move to a bigger office for more floors.</button>`;
+  });
+  const anchor = kind === "machines" ? "sec-agent" : "sec-" + kind;
+  if (document.getElementById(anchor) || kind !== "design") html += `<button class="btn wide" data-goto="${anchor}">Show this team on the Team tab</button>`;
+  document.getElementById("buildTitle").textContent = info.name;
+  document.getElementById("buildBody").innerHTML = html;
+  const sheet = document.getElementById("build");
+  sheet.dataset.pod = kind;
+  sheet.hidden = false;
+}
+
 function openRoomSheet(id) {
   const c = company;
   const r = towerRooms().find(x => x.id === id);
@@ -2162,6 +2215,29 @@ document.getElementById("buildBody").addEventListener("click", e => {
   const opt = e.target.closest("[data-build]");
   const dem = e.target.closest("[data-demolish]");
   const sheet = document.getElementById("build");
+  const hire = e.target.closest("[data-podhire]");
+  const pbuild = e.target.closest("[data-podbuild]");
+  const go = e.target.closest("[data-goto]");
+  if (hire && !hire.disabled) {
+    doAction(hire.dataset.podhire, null);
+    openPodSheet(sheet.dataset.pod);
+    return;
+  }
+  if (pbuild && !pbuild.disabled) {
+    const spot = freeSpot(pbuild.dataset.podbuild);
+    if (spot && placeRoom(pbuild.dataset.podbuild, spot[0], spot[1], false)) notify("Built a " + roomType(pbuild.dataset.podbuild).name.toLowerCase() + " on floor " + (spot[0] + 1) + ".", true);
+    render();
+    openPodSheet(sheet.dataset.pod);
+    return;
+  }
+  if (go) {
+    sheet.hidden = true;
+    currentTab = "team";
+    render();
+    const el = document.getElementById(go.dataset.goto);
+    if (el) el.scrollIntoView({ block: "start" });
+    return;
+  }
   if (opt && !opt.disabled) {
     if (placeRoom(opt.dataset.build, Number(sheet.dataset.floor), Number(sheet.dataset.slot), false)) {
       notify("Built a " + roomType(opt.dataset.build).name.toLowerCase() + " on floor " + (Number(sheet.dataset.floor) + 1) + ".", true);
@@ -3627,6 +3703,7 @@ function renderFloor() {
           body += `</g>`;
         });
       }
+      body += `<rect x="${x}" y="${y}" width="${width}" height="${h}" rx="8" fill="#ffffff" fill-opacity="0" data-do="pod" data-id="machines" style="cursor:pointer"/>`;
       y += h + PAD; x = PAD; col = 0; rowH = 0;
       return;
     }
@@ -3641,7 +3718,7 @@ function renderFloor() {
     body += `<text x="${x + width - 8}" y="${y + 15}" font-size="10" text-anchor="end" fill="#6b7785">${pod.locked ? "" : pod.people.length + " of " + seatCount}</text>`;
     if (pod.locked || seatCount === 0) {
       body += `<rect x="${x + 8}" y="${y + LABEL}" width="${width - 16}" height="${D - 6}" rx="6" fill="url(#hatch)"/>`;
-      body += `<text x="${x + width / 2}" y="${y + LABEL + D / 2}" font-size="10" text-anchor="middle" fill="#55606e">${pod.locked ? "Build one in the tower" : "No seats"}</text>`;
+      body += `<text x="${x + width / 2}" y="${y + LABEL + D / 2}" font-size="10" text-anchor="middle" fill="#55606e">Tap to build one in the tower</text>`;
     }
     for (let i = 0; i < seatCount; i++) {
       const cx = x + PAD + (i % cols) * D, cy = y + LABEL + Math.floor(i / cols) * D;
@@ -3653,6 +3730,7 @@ function renderFloor() {
       if (person) body += floorPerson(cx + D / 2, cy + 30, person, pod.kind, pod.color);
       else body += `<text x="${cx + D / 2}" y="${cy + 34}" font-size="10" font-weight="700" text-anchor="middle" fill="#7d8b99">+</text>`;
     }
+    body += `<rect x="${x}" y="${y}" width="${width}" height="${h}" rx="8" fill="#ffffff" fill-opacity="0" data-do="pod" data-id="${pod.kind}" style="cursor:pointer"/>`;
     if (pod.wide) { y += h + PAD; rowH = 0; col = 0; x = PAD; }
     else if (col === 0) { col = 1; x = PAD + podW + PAD; rowH = h; }
     else { col = 0; x = PAD; y += Math.max(rowH, h) + PAD; rowH = 0; }
@@ -3686,7 +3764,7 @@ function renderTeam() {
     <div class="styles">${Object.keys(STYLES).map(k => `<button class="btn ${(c.style || "balanced") === k ? "primary" : ""}" data-do="style" data-id="${k}">${STYLES[k].label}</button>`).join("")}</div>
     <p class="note">${style.text} Payroll is ${cash(payroll())} a day.</p>` : `
     <p class="note">Carrot or stick management and raises open up once the studio moves into the shared studio. For now everybody gets market pay. Payroll is ${cash(payroll())} a day.</p>`) + `
-    <h2 class="section-title spaced">Agents</h2>
+    <h2 class="section-title spaced" id="sec-agent">Agents</h2>
     <p class="note">Agents are AI programs, not people. They live in the machine room as server racks, and each one runs up to three terminals by itself. It accepts orders, starts builds, and ships finished games. Agents never play test, so bugs go straight to customers.</p>`;
 
   if (!c.agents.length) html += `<p class="empty">No agents yet. For now you run every terminal by hand.</p>`;
@@ -3714,7 +3792,7 @@ function renderTeam() {
     <p class="quiet">${c.agents.length} of ${seats("agent")} agent ${plural(seats("agent"), "seat")} used.</p>
   </div>`;
 
-  html += `<h2 class="section-title spaced">Devs</h2>
+  html += `<h2 class="section-title spaced" id="sec-dev">Devs</h2>
     <p class="note">A dev supervises up to three agents. Terminals under those agents build faster and write fewer bugs, and the dev fixes about half the bugs an agent would have shipped.</p>`;
 
   if (!c.devs.length) html += `<p class="empty">No devs yet.</p>`;
@@ -3736,7 +3814,7 @@ function renderTeam() {
   else html += `<button class="btn primary wide" data-do="hireDev">Hire a dev for ${cash(PRICES.dev)}</button>`;
   html += `<p class="quiet">${c.devs.length} of ${seats("dev")} dev ${plural(seats("dev"), "seat")} used.</p></div>`;
 
-  html += `<h2 class="section-title spaced">Game testers</h2>
+  html += `<h2 class="section-title spaced" id="sec-qa">Game testers</h2>
     <p class="note">Testers play every finished game, fix most of the bugs they find, and ship it for you, so you never have to tap Ship. They grab games before agents ship them too, so fewer bugs reach customers.</p>`;
   const qas = c.qas || [];
   if (!qas.length) html += `<p class="empty">No testers yet. You ship by hand.</p>`;
@@ -3756,7 +3834,7 @@ function renderTeam() {
   else html += `<button class="btn primary wide" data-do="hireQa">Hire a game tester for ${cash(PRICES.qa)}</button>`;
   html += `<p class="quiet">${qas.length} of ${qaSeats} tester ${plural(qaSeats, "seat")} used.</p></div>`;
 
-  html += `<h2 class="section-title spaced">Managers</h2>
+  html += `<h2 class="section-title spaced" id="sec-mgr">Managers</h2>
     <p class="note">A manager runs up to three testers. Managed testers test twice as fast and catch nearly every bug. With any manager on staff you can also set house rules that run every night for the whole studio.</p>`;
   if ((c.mgrs || []).length) {
     const r = rules();
@@ -3786,7 +3864,7 @@ function renderTeam() {
   else html += `<button class="btn primary wide" data-do="hireMgr">Hire a manager for ${cash(PRICES.mgr)}</button>`;
   html += `<p class="quiet">${mgrs.length} of ${mgrSeats} manager ${plural(mgrSeats, "seat")} used.</p></div>`;
 
-  html += `<h2 class="section-title spaced">Security engineers</h2>
+  html += `<h2 class="section-title spaced" id="sec-sec">Security engineers</h2>
     <p class="note">Security engineers handle vulnerabilities. Each one patches exposed games on their own without a terminal, makes terminal patch builds faster, shrinks patch jobs, and cuts the nightly liability on unpatched games. Having any on staff buys an extra day before a CVE deadline. With nothing to patch, they dig for exploits in rival studios' games. Heat is ${Math.round(c.heat || 0)} out of 100.</p>`;
   const secs = c.secs || [];
   if (!secs.length) html += `<p class="empty">No security engineers yet. A vulnerability will land on the terminals.</p>`;
@@ -3806,7 +3884,7 @@ function renderTeam() {
   else html += `<button class="btn primary wide" data-do="hireSec">Hire a security engineer for ${cash(PRICES.sec)}</button>`;
   html += `<p class="quiet">${secs.length} of ${secSeats} security ${plural(secSeats, "seat")} used.</p></div>`;
 
-  html += `<h2 class="section-title spaced">Marketing</h2>
+  html += `<h2 class="section-title spaced" id="sec-mkt">Marketing</h2>
     <p class="note">Each marketer can run one ad campaign at a time. A campaign pumps one product line for a few days: way more orders for it, better pay on them, and a little more traffic overall. Campaigns cost money up front. A marketer who is on fire runs a bigger campaign.</p>`;
   const mkts = c.mkts || [];
   if (!mkts.length) html += `<p class="empty">No marketers yet. The market just happens to you.</p>`;
@@ -3834,7 +3912,7 @@ function renderTeam() {
   else html += `<button class="btn primary wide" data-do="hireMkt">Hire a marketer for ${cash(PRICES.mkt)}</button>`;
   html += `<p class="quiet">${mkts.length} of ${mktSeats} marketing ${plural(mktSeats, "seat")} used.</p></div>`;
 
-  html += `<h2 class="section-title spaced">Sales</h2>
+  html += `<h2 class="section-title spaced" id="sec-sales">Sales</h2>
     <p class="note">Salespeople squeeze more money out of every new order, keep customers waiting longer before they walk, and turn happy customers into repeat clients who order again. Closers get coffee: with the lobby coffee bar, every salesperson squeezes even harder.</p>`;
   const sales = salesTeam();
   if (!sales.length) html += `<p class="empty">No salespeople yet. Customers pay sticker price.</p>`;
@@ -3853,7 +3931,7 @@ function renderTeam() {
   else html += `<button class="btn primary wide" data-do="hireSales">Hire a salesperson for ${cash(PRICES.sales)}</button>`;
   html += `<p class="quiet">${sales.length} of ${salesSeats} sales ${plural(salesSeats, "seat")} used.</p></div>`;
 
-  html += `<h2 class="section-title spaced">Lawyers</h2>
+  html += `<h2 class="section-title spaced" id="sec-law">Lawyers</h2>
     <p class="note">Lawyers shrink every fine and legal bill, soften the reputation hit when the studio gets caught, and cool off heat faster each night. When there is no vulnerability open, they send cease and desist letters to rivals and sometimes a settlement check comes back.</p>`;
   const laws = c.laws || [];
   if (!laws.length) html += `<p class="empty">No lawyers yet. Fines land at full price.</p>`;
@@ -3871,7 +3949,7 @@ function renderTeam() {
   else html += `<button class="btn primary wide" data-do="hireLaw">Hire a lawyer for ${cash(PRICES.law)}</button>`;
   html += `<p class="quiet">${laws.length} of ${lawSeats} lawyer ${plural(lawSeats, "seat")} used. Fines are cut to ${Math.round(lawCut() * 100)} percent.</p></div>`;
 
-  html += `<h2 class="section-title spaced">Senior hires</h2>
+  html += `<h2 class="section-title spaced" id="sec-design">Senior hires</h2>
     <p class="note">Experienced developers cost a lot more and each one needs the one before them on staff. Every senior hire opens a new product line for the studio.</p>`;
   SENIORS.forEach(x => {
     const hired = c.seniors[x.key];
@@ -4184,6 +4262,9 @@ function doAction(action, id) {
     }
     case "room":
       openRoomSheet(id);
+      return;
+    case "pod":
+      openPodSheet(id);
       return;
     case "fire":
       fireStaff(id);
