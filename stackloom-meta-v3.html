@@ -437,6 +437,11 @@
   .paytable div.win { color: var(--accent); font-weight: 750; }
   .hand { position: relative; display: grid; grid-template-columns: repeat(5, var(--cw)); gap: var(--gap); justify-content: center; height: calc(var(--ch) + 12px); padding-top: 10px; }
   .hand .slotc { position: relative; width: var(--cw); height: var(--ch); }
+.resume { background: #ffffff; border: 1px solid #d5dde6; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.resume .btn { margin-top: 10px; }
+.trait { display: grid; grid-template-columns: 84px 1fr 28px; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; }
+.trait b { text-align: right; color: #2463b0; }
+.flag { margin-top: 8px; padding: 8px; border-radius: 8px; background: #fde8e8; color: #9a2b23; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -491,6 +496,10 @@
     <h2>The tower</h2>
     <p>The Tower tab is your building from the side. Tap an empty slot to build a room: terminal bays, server closets for agents, dev pods, QA rooms, hacker dens, legal offices, marketing and sales, design lofts for senior hires, and perks like the coffee bar and the cafeteria. Rooms decide how many people you can hire. Bigger offices add floors. The same tab shows the competition: every rival's tower on the skyline, the market share pie, and who ships what.</p>
 
+    <h2>Hiring and HR</h2>
+    <p>Every hire comes from a stack of three resumes, each with a one line pitch and bars for skill, focus, and loyalty. Better people ask for more. Build an HR office and hire a recruiter to scout better people, set a minimum skill, pay signing bonuses, run job ads through marketing, and run background checks through legal. Skip the checks and sooner or later somebody turns out to have stolen their last studio's code, and the lawsuit lands on you.</p>
+    <h2>Reverse engineering</h2>
+    <p>Rival studios sometimes ship a real original game. The reverse engineering lab at the bottom of the Tower tab tears one apart overnight. Slide the effort up, and when the bar fills your own copy goes on the terminals under a new name, sells like crazy for a few nights, and takes a bite out of the rival. Push harder and it goes faster, costs more, and the rival is more likely to sue. Lawyers help.</p>
     <h2>The office</h2>
     <p>Bigger offices hold more terminals and more staff, and cost more rent. Upgrades on the Office tab make the whole studio faster or cleaner.</p>
     <p>Past the campus the buildings get stupid. The skyscraper, the megatower, and finally the billion dollar arcology with more floors than anybody needs. Up there you can build coffee booths on every other floor, bedroom pods so nobody goes home, a medic pod, a gym, a grand lobby, and private floors where your best people each get a whole floor to themselves. Or skip all of it, fire the sales team, and live off royalties. Your call.</p>
@@ -1395,7 +1404,8 @@ const SHOOT_BOMBS = {
 const DAY_SECONDS = 45;
 const SAVE_KEY = "stackloom-company-1";
 
-const PRICES = { agent: 500, agentSalary: 60, dev: 1500, devSalary: 150, terminalUpkeep: 10, sec: 1200, secSalary: 120, law: 1500, lawSalary: 140, qa: 700, qaSalary: 70, mgr: 1800, mgrSalary: 170, mkt: 1600, mktSalary: 150, sales: 1000, salesSalary: 110 };
+const HR_NAMES = ["Gretta", "Lionel", "Pam", "Rosalind"];
+const PRICES = { hr: 1400, hrSalary: 130, agent: 500, agentSalary: 60, dev: 1500, devSalary: 150, terminalUpkeep: 10, sec: 1200, secSalary: 120, law: 1500, lawSalary: 140, qa: 700, qaSalary: 70, mgr: 1800, mgrSalary: 170, mkt: 1600, mktSalary: 150, sales: 1000, salesSalary: 110 };
 const MKT_SEATS = [0, 1, 2, 3];
 const SALES_SEATS = [1, 1, 2, 4];
 const MKT_NAMES = ["Skye", "Brennan", "Jules"];
@@ -1951,6 +1961,7 @@ const ROOM_TYPES = [
   { key: "mgr", short: "Boss", name: "Manager office", w: 1, cost: 500, role: "mgr", seats: 1, color: "#f3e7cc", text: "One manager who runs testers and the house rules." },
   { key: "sec", short: "Hackers", name: "Hacker den", w: 1, cost: 500, role: "sec", seats: 2, color: "#e4e0fa", text: "Two security engineers. Patches, and mischief when there is nothing to patch." },
   { key: "law", short: "Legal", name: "Legal office", w: 1, cost: 600, role: "law", seats: 2, color: "#e3e6ea", text: "Two lawyers who shrink fines and mail cease and desist letters." },
+  { key: "hr", short: "HR", name: "HR office", w: 1, cost: 700, role: "hr", seats: 2, color: "#d8eef5", text: "Two recruiters who scout better hires, pay signing bonuses, post job ads with marketing, and run background checks with legal." },
   { key: "mkt", short: "Ads", name: "Marketing studio", w: 1, cost: 500, role: "mkt", seats: 2, color: "#f8dcec", text: "Two marketers who run ad campaigns." },
   { key: "sales", name: "Sales floor", w: 2, cost: 400, role: "sales", seats: 3, color: "#f6dad6", text: "Three salespeople working the phones. Closers get coffee." },
   { key: "design", name: "Design loft", w: 2, cost: 800, role: "design", seats: 4, color: "#fbe6d1", text: "Four seats for senior hires, the ones who open new product lines." },
@@ -1966,8 +1977,8 @@ const ROOM_TYPES = [
   { key: "lobby", name: "Grand lobby", w: 3, cost: 250000, perk: "lobby", glyph: "🏛️", color: "#f7efd6", text: "Perk. Marble, a fountain, and a receptionist named Gretchen. Reputation climbs every night and customers pay more." },
   { key: "suite", name: "Private floor", w: 6, cost: 500000, office: 5, color: "#e6f0fb", text: "A whole floor for one person with a bed, a gym, a coffee machine, and a door that locks. It goes to your best person without one. They stay on fire and never quit." }
 ];
-const ROLE_LIST = { terminal: "terminals", agent: "agents", dev: "devs", qa: "qas", mgr: "mgrs", sec: "secs", law: "laws", mkt: "mkts", sales: "sales" };
-const ROLE_COLOR = { dev: "#2fa38f", qa: "#3f9a3a", mgr: "#b07a12", sec: "#5b4bdb", law: "#55606e", mkt: "#d14f9c", sales: "#c0392b", design: "#e8862e" };
+const ROLE_LIST = { hr: "hrs", terminal: "terminals", agent: "agents", dev: "devs", qa: "qas", mgr: "mgrs", sec: "secs", law: "laws", mkt: "mkts", sales: "sales" };
+const ROLE_COLOR = { hr: "#1f8fb0", dev: "#2fa38f", qa: "#3f9a3a", mgr: "#b07a12", sec: "#5b4bdb", law: "#55606e", mkt: "#d14f9c", sales: "#c0392b", design: "#e8862e" };
 
 function roomType(key) { return ROOM_TYPES.find(t => t.key === key); }
 function roomOffice(t) { const pk = t.perk && PERKS.find(k => k.key === t.perk); return t.office || (pk ? pk.office : 0); }
@@ -2083,7 +2094,14 @@ function rivalNight() {
     if (r.name === "Gloomsoft" && activeEvents().some(a => a.id === "rival_blocks")) { r.byLine.blocks = (r.byLine.blocks || 0) + 8; r.games += 8; }
     if (breached && Math.random() < 0.5) n = Math.max(0, n - 2);
     for (let k = 0; k < n; k++) { const l = pick(ALL_LINES); r.byLine[l] = (r.byLine[l] || 0) + 1; r.games++; }
-    if (Math.random() < 0.12) { r.originals++; r.games++; }
+    if (Math.random() < 0.12) {
+      r.originals++; r.games++;
+      ensureOriginals();
+      const o = rivalOriginal(r.name);
+      c.originals.push(o);
+      if (c.originals.length > 6) c.originals.shift();
+      notify(r.name + " shipped an original game called " + o.title + ". The reverse engineering lab on the Tower tab could take it apart.");
+    }
   });
 }
 function marketRows() {
@@ -2244,7 +2262,8 @@ function renderTowerTab() {
     <h2 class="section-title spaced">Market share</h2>
     ${renderPie(rows)}
     <h2 class="section-title spaced">Who ships what</h2>
-    ${renderMarketStats(rows)}`;
+    ${renderMarketStats(rows)}
+    ${renderReLab()}`;
   return html;
 }
 
@@ -2279,6 +2298,7 @@ const POD_INFO = {
   law: { name: "Legal pod", hires: [["law", "hireLaw", "a lawyer"]], rooms: ["law"] },
   mkt: { name: "Marketing pod", hires: [["mkt", "hireMkt", "a marketer"]], rooms: ["mkt"] },
   sales: { name: "Sales pod", hires: [["sales", "hireSales", "a salesperson"]], rooms: ["sales"] },
+  hr: { name: "HR pod", hires: [["hr", "hireHr", "a recruiter"]], rooms: ["hr"] },
   design: { name: "Design pod", hires: [], rooms: ["design"] }
 };
 function hirePrice(role) { return role === "terminal" ? terminalPrice() : PRICES[role]; }
@@ -2344,9 +2364,23 @@ document.getElementById("buildBody").addEventListener("click", e => {
   const hire = e.target.closest("[data-podhire]");
   const pbuild = e.target.closest("[data-podbuild]");
   const go = e.target.closest("[data-goto]");
+  const pickBtn = e.target.closest("[data-pick]");
+  const reroll = e.target.closest("[data-reroll]");
+  if (pickBtn) {
+    const [role, i] = pickBtn.dataset.pick.split(":");
+    if (pickCandidate(role, Number(i))) sheet.hidden = true;
+    render();
+    return;
+  }
+  if (reroll) {
+    const role = reroll.dataset.reroll;
+    if (hrCount() || spend(150)) { freshPool(role); openResumes(role); }
+    render();
+    return;
+  }
   if (hire && !hire.disabled) {
     doAction(hire.dataset.podhire, null);
-    openPodSheet(sheet.dataset.pod);
+    if (!HIRE_ACTIONS[hire.dataset.podhire]) openPodSheet(sheet.dataset.pod);
     return;
   }
   if (pbuild && !pbuild.disabled) {
@@ -2446,6 +2480,7 @@ function mixLabel(order) {
   return b ? a.label + " x " + b.label : a.label;
 }
 function productTitle(order) {
+  if (order && order.knock) return order.knock;
   if (!order || !order.theme) return null;
   return [order.prefix, mixLabel(order), order.suffix].filter(Boolean).join(" ");
 }
@@ -2506,7 +2541,7 @@ function ensureBacklist() {
 }
 function addBacklist(order) {
   ensureBacklist();
-  company.backlist.push({ id: order.id, d: company.day, p: order.platform || "mobile", o: order.own ? 1 : 0, l: order.tag === "lite" ? 1 : 0, t: productTitle(order) || lookFor(order).label });
+  company.backlist.push(Object.assign({ id: order.id, d: company.day, p: order.platform || "mobile", o: order.own ? 1 : 0, l: order.tag === "lite" ? 1 : 0, t: productTitle(order) || lookFor(order).label }, order.knock ? { hot: company.day + 5 } : {}));
 }
 function royaltyFor(b, st) {
   const c = company;
@@ -2738,7 +2773,8 @@ const STAFF_ROLES = [
   { role: "agent", list: "agents", title: "Agent" }, { role: "dev", list: "devs", title: "Dev" },
   { role: "qa", list: "qas", title: "Tester" }, { role: "mgr", list: "mgrs", title: "Manager" },
   { role: "sec", list: "secs", title: "Security engineer" }, { role: "law", list: "laws", title: "Lawyer" },
-  { role: "mkt", list: "mkts", title: "Marketer" }, { role: "sales", list: "sales", title: "Salesperson" }
+  { role: "mkt", list: "mkts", title: "Marketer" }, { role: "sales", list: "sales", title: "Salesperson" },
+  { role: "hr", list: "hrs", title: "Recruiter" }
 ];
 
 // ------------------------------------------------------------------
@@ -2782,7 +2818,7 @@ function setPerf(role, name, value) {
 // Carrot or stick. Raises bump pay and performance, with diminishing
 // returns, because past a point money does not keep anyone focused. The
 // management style changes everybody's pay and how they react.
-const ROLE_SALARY = { agent: "agentSalary", dev: "devSalary", qa: "qaSalary", mgr: "mgrSalary", sec: "secSalary", law: "lawSalary", mkt: "mktSalary", sales: "salesSalary" };
+const ROLE_SALARY = { hr: "hrSalary", agent: "agentSalary", dev: "devSalary", qa: "qaSalary", mgr: "mgrSalary", sec: "secSalary", law: "lawSalary", mkt: "mktSalary", sales: "salesSalary" };
 const STYLES = {
   stick: { label: "Stick", pay: 0.85, drift: -3, text: "Pay below market and rule by fear. Performance slides faster, firing someone scares everyone else into working harder, and anyone who hits rock bottom might just quit." },
   balanced: { label: "Balanced", pay: 1, drift: 0, text: "Market pay, no drama. Raises and firing work the normal way." },
@@ -2900,7 +2936,7 @@ function drift() {
   if (c.style === "stick" && raisesOpen()) STAFF_ROLES.forEach(r => {
     const list = c[r.list] || [];
     for (let i = list.length - 1; i >= 0; i--) {
-      if (getPerf(r.role, list[i]) < 15 && Math.random() < (c.upgrades.medic ? 0.15 : 0.3) && !hasSuite(r.role, list[i])) {
+      if (getPerf(r.role, list[i]) < 15 && Math.random() < (c.upgrades.medic ? 0.15 : 0.3) * (1.5 - traits(r.role, list[i]).l / 100) && !hasSuite(r.role, list[i])) {
         notify(r.title + " " + list[i] + " quit and took the stapler.", true);
         list.splice(i, 1);
       }
@@ -2908,7 +2944,8 @@ function drift() {
   });
   STAFF_ROLES.forEach(r => (c[r.list] || []).forEach(name => {
     const before = getPerf(r.role, name);
-    let after = before + Math.random() * 20 - 12 + perkLift() + mgmtStyle().drift + Math.min(payLevel(r.role, name), 3) * 2;
+    const tr = traits(r.role, name);
+    let after = before + (tr.f - 50) / 10 + Math.random() * 20 - 12 + perkLift() + mgmtStyle().drift + Math.min(payLevel(r.role, name), 3) * 2;
     if (c.upgrades.medic) after = Math.max(30, after);
     if (hasSuite(r.role, name)) after = Math.max(85, after + 15);
     setPerf(r.role, name, after);
@@ -3804,6 +3841,9 @@ function payBills() {
   checkCves();
   assignSuites();
   drift();
+  flagNight();
+  reNight();
+  if (hrRules().ads) c.money -= 150;
   if (c.upgrades.lobby) c.reputation = Math.min(100, c.reputation + 2);
   runManagerRules();
   rivalNight();
@@ -4058,6 +4098,8 @@ function floorPods() {
       people: (c.mkts || []).map(n => ({ name: "Marketer " + n, busy: campaigns().some(a => a.by === n) })) },
     { name: "Sales pod", kind: "sales", color: "#c0392b", seats: seats("sales"),
       people: (c.sales || []).map(n => ({ name: "Salesperson " + n, busy: true })) },
+    { name: "HR pod", kind: "hr", color: "#1f8fb0", seats: seats("hr"), locked: seats("hr") === 0 ? "tower" : "",
+      people: (c.hrs || []).map(n => ({ name: "Recruiter " + n, busy: !!(c.pool && Object.keys(c.pool).length) })) },
     { name: "Design pod", kind: "design", color: "#e8862e", seats: Math.max(seats("design"), hiredSeniors.length), wide: true,
       locked: !seats("design") && !hiredSeniors.length ? "tower" : "",
       people: hiredSeniors.map(x => ({ name: x.title + " " + x.name, busy: c.orders.some(o => o.status === "building" && (o.line || "blocks") === x.line) })) }
@@ -4212,7 +4254,7 @@ function renderTeam() {
   html += `<div class="buy">
     ${c.agents.length >= seats("agent")
       ? `<button class="btn wide" disabled>No free agent seats. Build more room in the tower.</button>`
-      : `<button class="btn primary wide" data-do="hireAgent">Hire an agent for ${cash(PRICES.agent)}</button>`}
+      : `<button class="btn primary wide" data-do="hireAgent">Hire an agent, see resumes</button>`}
     <p class="quiet">${c.agents.length} of ${seats("agent")} agent ${plural(seats("agent"), "seat")} used.</p>
   </div>`;
 
@@ -4249,7 +4291,7 @@ function renderTeam() {
   html += `<div class="buy">`;
   if (seats("dev") === 0) html += `<button class="btn wide" disabled>Build a dev pod in the tower first</button>`;
   else if (c.devs.length >= seats("dev")) html += `<button class="btn wide" disabled>No free dev seats. Build more room in the tower.</button>`;
-  else html += `<button class="btn primary wide" data-do="hireDev">Hire a dev for ${cash(PRICES.dev)}</button>`;
+  else html += `<button class="btn primary wide" data-do="hireDev">Hire a dev, see resumes</button>`;
   html += `<p class="quiet">${c.devs.length} of ${seats("dev")} dev ${plural(seats("dev"), "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced" id="sec-qa">Game testers</h2>
@@ -4269,7 +4311,7 @@ function renderTeam() {
   const qaSeats = seats("qa");
   html += `<div class="buy">`;
   if (qas.length >= qaSeats) html += `<button class="btn wide" disabled>No free tester seats. Build more room in the tower.</button>`;
-  else html += `<button class="btn primary wide" data-do="hireQa">Hire a game tester for ${cash(PRICES.qa)}</button>`;
+  else html += `<button class="btn primary wide" data-do="hireQa">Hire a game tester, see resumes</button>`;
   html += `<p class="quiet">${qas.length} of ${qaSeats} tester ${plural(qaSeats, "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced" id="sec-mgr">Managers</h2>
@@ -4299,7 +4341,7 @@ function renderTeam() {
   html += `<div class="buy">`;
   if (mgrSeats === 0) html += `<button class="btn wide" disabled>Build a manager office in the tower first</button>`;
   else if (mgrs.length >= mgrSeats) html += `<button class="btn wide" disabled>No free manager seats. Build more room in the tower.</button>`;
-  else html += `<button class="btn primary wide" data-do="hireMgr">Hire a manager for ${cash(PRICES.mgr)}</button>`;
+  else html += `<button class="btn primary wide" data-do="hireMgr">Hire a manager, see resumes</button>`;
   html += `<p class="quiet">${mgrs.length} of ${mgrSeats} manager ${plural(mgrSeats, "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced" id="sec-sec">Security engineers</h2>
@@ -4319,7 +4361,7 @@ function renderTeam() {
   const secSeats = seats("sec");
   html += `<div class="buy">`;
   if (secs.length >= secSeats) html += `<button class="btn wide" disabled>No free security seats. Build more room in the tower.</button>`;
-  else html += `<button class="btn primary wide" data-do="hireSec">Hire a security engineer for ${cash(PRICES.sec)}</button>`;
+  else html += `<button class="btn primary wide" data-do="hireSec">Hire a security engineer, see resumes</button>`;
   html += `<p class="quiet">${secs.length} of ${secSeats} security ${plural(secSeats, "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced" id="sec-mkt">Marketing</h2>
@@ -4347,7 +4389,7 @@ function renderTeam() {
   html += `<div class="buy">`;
   if (mktSeats === 0) html += `<button class="btn wide" disabled>Build a marketing studio in the tower first</button>`;
   else if (mkts.length >= mktSeats) html += `<button class="btn wide" disabled>No free marketing seats. Build more room in the tower.</button>`;
-  else html += `<button class="btn primary wide" data-do="hireMkt">Hire a marketer for ${cash(PRICES.mkt)}</button>`;
+  else html += `<button class="btn primary wide" data-do="hireMkt">Hire a marketer, see resumes</button>`;
   html += `<p class="quiet">${mkts.length} of ${mktSeats} marketing ${plural(mktSeats, "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced" id="sec-sales">Sales</h2>
@@ -4366,8 +4408,26 @@ function renderTeam() {
   const salesSeats = seats("sales");
   html += `<div class="buy">`;
   if (sales.length >= salesSeats) html += `<button class="btn wide" disabled>No free sales seats. Build more room in the tower.</button>`;
-  else html += `<button class="btn primary wide" data-do="hireSales">Hire a salesperson for ${cash(PRICES.sales)}</button>`;
+  else html += `<button class="btn primary wide" data-do="hireSales">Hire a salesperson, see resumes</button>`;
   html += `<p class="quiet">${sales.length} of ${salesSeats} sales ${plural(salesSeats, "seat")} used.</p></div>`;
+
+  const hrs = c.hrs || [], hr = rules();
+  html += `<h2 class="section-title spaced" id="sec-hr">HR</h2>
+    <p class="note">Every hire comes from a stack of three resumes. Recruiters bring in better people and free fresh stacks, and they unlock the hiring rules below. Signing bonuses make new hires start sharper and stay longer. Job ads run through marketing. Background checks run through legal and flag the hires who would get you sued.</p>`;
+  if (!hrs.length) html += `<p class="empty">No recruiters yet. Resumes come in random and nobody checks them.</p>`;
+  hrs.forEach((name, hi) => {
+    html += `<div class="row"><div class="row-top"><div class="row-name">Recruiter ${name}</div><div class="row-state">${cash(salaryFor("hr", name))} a day</div></div>
+      ${perfHtml("hr", name, hi)}<div class="row-sub">Reading resumes and organizing a potluck</div></div>`;
+  });
+  if (hrs.length) html += `<div class="row rules"><div class="row-name">Hiring rules</div>
+      <label class="rule"><span>Only interview skill above <b>${hr.hrMin || "off"}</b></span><input type="range" min="0" max="90" step="10" value="${hr.hrMin || 0}" data-set="hrMin"></label>
+      <label class="rule"><span>Signing bonus, percent of the hiring fee <b>${hr.hrBonus || "off"}</b></span><input type="range" min="0" max="100" step="10" value="${hr.hrBonus || 0}" data-set="hrBonus"></label>
+      <div class="actions"><button class="btn ${hr.hrAds ? "primary" : ""}" data-do="hrToggle" data-id="hrAds" ${(c.mkts || []).length ? "" : "disabled"}>${(c.mkts || []).length ? (hr.hrAds ? "Job ads on, " + cash(150) + " a night" : "Run job ads through marketing") : "Job ads need a marketer"}</button>
+      <button class="btn ${hr.hrLegal ? "primary" : ""}" data-do="hrToggle" data-id="hrLegal" ${lawCount() ? "" : "disabled"}>${lawCount() ? (hr.hrLegal ? "Background checks on, " + cash(100) + " a stack" : "Run background checks through legal") : "Background checks need a lawyer"}</button></div></div>`;
+  html += `<div class="buy">`;
+  if (hrs.length >= seats("hr")) html += `<button class="btn wide" disabled>No free HR seats. Build an HR office in the tower.</button>`;
+  else html += `<button class="btn primary wide" data-do="hireHr">Hire a recruiter, see resumes</button>`;
+  html += `<p class="quiet">${hrs.length} of ${seats("hr")} HR ${plural(seats("hr"), "seat")} used.</p></div>`;
 
   html += `<h2 class="section-title spaced" id="sec-law">Lawyers</h2>
     <p class="note">Lawyers shrink every fine and legal bill, soften the reputation hit when the studio gets caught, and cool off heat faster each night. When there is no vulnerability open, they send cease and desist letters to rivals and sometimes a settlement check comes back.</p>`;
@@ -4384,7 +4444,7 @@ function renderTeam() {
   const lawSeats = seats("law");
   html += `<div class="buy">`;
   if (laws.length >= lawSeats) html += `<button class="btn wide" disabled>No free lawyer seats. Build more room in the tower.</button>`;
-  else html += `<button class="btn primary wide" data-do="hireLaw">Hire a lawyer for ${cash(PRICES.law)}</button>`;
+  else html += `<button class="btn primary wide" data-do="hireLaw">Hire a lawyer, see resumes</button>`;
   html += `<p class="quiet">${laws.length} of ${lawSeats} lawyer ${plural(lawSeats, "seat")} used. Fines are cut to ${Math.round(lawCut() * 100)} percent.</p></div>`;
 
   html += `<h2 class="section-title spaced" id="sec-design">Senior hires</h2>
@@ -4600,9 +4660,205 @@ function fileColors(file) {
   return file.pieces.slice(0, 7).map(piece => piece.color);
 }
 
+
+// ------------------------------------------------------------------
+// Hiring. Every hire comes from a stack of three resumes with a one line
+// pitch and three skill bars. An HR department scouts better people,
+// pays signing bonuses, posts job ads through marketing, and runs
+// background checks through legal.
+// ------------------------------------------------------------------
+const HIRE_ACTIONS = { hireAgent: "agent", hireDev: "dev", hireQa: "qa", hireMgr: "mgr", hireSec: "sec", hireLaw: "law", hireMkt: "mkt", hireSales: "sales", hireHr: "hr" };
+const HIRE_POOLS = { agent: AGENT_NAMES, dev: DEV_NAMES, qa: QA_NAMES, mgr: MGR_NAMES, sec: SEC_NAMES, law: LAW_NAMES, mkt: MKT_NAMES, sales: SALES_NAMES, hr: HR_NAMES };
+const TRAIT_LABELS = { agent: ["Throughput", "Stability", "Obedience"], other: ["Skill", "Focus", "Loyalty"] };
+const RESUME_LINES = {
+  agent: ["Fine tuned on ten years of forum arguments.", "Claims to have read the whole internet. Twice.", "Previously deployed at a toaster company. Very good at toast.", "Open source, which means everyone has already copied it.", "Runs on one graphics card and pure spite.", "Says please and thank you to the terminals.", "Distilled from a bigger model that was too expensive.", "Has a context window the size of a parking lot."],
+  dev: ["Shipped a game once. Will mention it constantly.", "Knows every keyboard shortcut and no other social skills.", "Rewrote their resume in a framework that came out yesterday.", "Can center a div on the first try.", "Left the last studio because the snacks were bad.", "Has a side project that is better than your main product.", "Codes best between midnight and four in the morning.", "Self taught from video tutorials at double speed."],
+  qa: ["Has broken every game ever handed to them.", "Speedrunner. Will find the wall clip in ten minutes.", "Plays with the sound off and judges everything.", "Professional button masher, two regional titles.", "Writes bug reports longer than the game."],
+  mgr: ["Loves a standup meeting. Loves it too much.", "Ran a pizza place for nine years. Same skills.", "Has a whiteboard in their car.", "Says circle back unironically.", "Read one leadership book and applies it to everything."],
+  sec: ["Got banned from three online games for finding exploits.", "Wears sunglasses indoors and types very fast.", "Former penetration tester, currently penetrating snacks.", "Has a sticker on their laptop that says trust no one.", "Knows how to get free coffee out of the lobby machine."],
+  law: ["Passed the bar on the fourth try, which still counts.", "Specializes in letters that sound scarier than they are.", "Once got a parking ticket thrown out using only eye contact.", "Billing in six minute increments since birth.", "Has never lost a case they did not lose."],
+  mkt: ["Went viral once with a video of a cat. Never recovered.", "Can say synergy with a straight face.", "Has opinions about fonts. Many opinions.", "Ran ads for a mattress company. Everyone slept on it.", "Knows exactly which emoji sells."],
+  sales: ["Could sell a falling block game to a falling block.", "Always be closing, even at funerals.", "Has a firm handshake and a firmer cologne.", "Once sold the same game to the same customer twice.", "Calls everyone buddy."],
+  hr: ["Has a laminated copy of the employee handbook.", "Can smell a fake resume from across the room.", "Will remember your birthday and your attendance record.", "Former talent scout for a minor league team.", "Organizes the potluck nobody asked for."]
+};
+const RED_FLAGS = ["took their last studio's source code home on a thumb drive", "is being sued by their former employer for poaching a whole team", "listed a degree from a university that does not exist", "got fired for running a side business on company servers", "has a noncompete with Gloomsoft that is still active"];
+function hrCount() { return (company.hrs || []).length; }
+function hrRules() { const r = rules(); return { min: hrCount() ? r.hrMin || 0 : 0, bonus: hrCount() ? r.hrBonus || 0 : 0, ads: hrCount() && (company.mkts || []).length && r.hrAds ? 1 : 0, legal: hrCount() && lawCount() && r.hrLegal ? 1 : 0 }; }
+function traits(role, name) { return ((company.traits || {})[role + ":" + name]) || { s: 50, f: 50, l: 50 }; }
+function makeCandidate(role, used) {
+  const c = company, hr = hrRules();
+  const pool = HIRE_POOLS[role].concat(EXTRA_NAMES).filter(n => !used.has(n));
+  const name = pool.length ? pick(pool) : freshName(HIRE_POOLS[role], [...used]);
+  used.add(name);
+  const scout = (c.hrs || []).reduce((n, h) => n + 7 * perfMult("hr", h), 0) + (hr.ads ? 10 : 0);
+  const roll = () => clamp(Math.round(30 + scout + Math.random() * 55), 5, 99);
+  let s = roll();
+  if (s < hr.min) s = clamp(hr.min + Math.round(Math.random() * 10), 5, 99);
+  const f = roll(), l = roll();
+  const ask = Math.round(PRICES[role] * ((s - 50) / 90 + (f - 50) / 250));
+  const flag = Math.random() < (hr.legal ? 0.2 : 0.15) ? pick(RED_FLAGS) : null;
+  return { name: name, line: pick(RESUME_LINES[role] || RESUME_LINES.dev), s: s, f: f, l: l, ask: ask, flag: flag };
+}
+function freshPool(role) {
+  const c = company, hr = hrRules();
+  if (!c.pool) c.pool = {};
+  const used = new Set(c[ROLE_LIST[role]] || []);
+  c.pool[role] = [0, 1, 2].map(() => makeCandidate(role, used));
+  if (hr.legal) c.money -= 100;
+}
+function hireTotal(role, cand) { return Math.max(Math.round(PRICES[role] * 0.4), PRICES[role] + cand.ask) + Math.round(PRICES[role] * hrRules().bonus / 100); }
+function bar(label, v) {
+  const color = v >= 65 ? "#2463b0" : v >= 35 ? "#e0a33a" : "#d0584f";
+  return `<div class="trait"><span>${label}</span><div class="perf-meter"><i style="width:${v}%;background:${color}"></i></div><b>${v}</b></div>`;
+}
+function openResumes(role) {
+  const c = company;
+  if (!c.pool || !c.pool[role]) freshPool(role);
+  const hr = hrRules();
+  const labels = role === "agent" ? TRAIT_LABELS.agent : TRAIT_LABELS.other;
+  const title = STAFF_ROLES.find(x => x.role === role).title;
+  let html = `<p class="note">${role === "agent" ? "Three spec sheets came in." : "Three resumes came in."} Pick one. Better people ask for more.${hr.bonus ? " Every hire gets a signing bonus of " + hr.bonus + " percent on top, so they start sharper and stick around." : ""}${hrCount() ? "" : " Hire somebody into an HR office to scout better people, pay signing bonuses, post job ads, and run background checks."}</p>`;
+  c.pool[role].forEach((cand, i) => {
+    html += `<div class="resume"><div class="row-top"><div class="row-name">${title} ${cand.name}</div><div class="row-state">${cash(hireTotal(role, cand))}</div></div>
+      <div class="row-sub">${cand.line}</div>
+      ${bar(labels[0], cand.s)}${bar(labels[1], cand.f)}${bar(labels[2], cand.l)}
+      ${cand.flag && hr.legal ? `<div class="flag">Legal ran a background check. This one ${cand.flag}.</div>` : ""}
+      <button class="btn primary wide" data-pick="${role}:${i}">Hire ${cand.name}</button></div>`;
+  });
+  const rerollCost = hrCount() ? 0 : 150;
+  html += `<button class="btn wide" data-reroll="${role}">${rerollCost ? "Toss these and get a new stack for " + cash(rerollCost) : "Toss these, HR brings a new stack for free"}</button>`;
+  document.getElementById("buildTitle").textContent = "Hiring " + (role === "agent" ? "an agent" : "a " + title.toLowerCase());
+  document.getElementById("buildBody").innerHTML = html;
+  const sheet = document.getElementById("build");
+  sheet.dataset.resume = role;
+  sheet.hidden = false;
+}
+function pickCandidate(role, i) {
+  const c = company;
+  const cand = c.pool && c.pool[role] && c.pool[role][i];
+  if (!cand) return false;
+  const list = ROLE_LIST[role];
+  if (!c[list]) c[list] = [];
+  if (c[list].length >= seats(role)) { showToast("No free seats for that. Build more room in the tower."); return false; }
+  if (!spend(hireTotal(role, cand))) return false;
+  const bonus = hrRules().bonus;
+  c[list].push(cand.name);
+  setPerf(role, cand.name, cand.s + bonus / 5);
+  if (!c.traits) c.traits = {};
+  c.traits[role + ":" + cand.name] = { s: cand.s, f: cand.f, l: clamp(cand.l + Math.round(bonus / 3), 5, 99), flag: cand.flag || null };
+  delete c.pool[role];
+  const title = STAFF_ROLES.find(x => x.role === role).title;
+  notify("Hired " + title + " " + cand.name + ". " + cand.line, true);
+  return true;
+}
+// A hire with a hidden red flag can blow up on you later. Legal checks
+// catch them before they get a badge.
+function flagNight() {
+  const c = company;
+  STAFF_ROLES.forEach(r => {
+    const list = c[r.list] || [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const t = traits(r.role, list[i]);
+      if (!t.flag || Math.random() > 0.05) continue;
+      const fine = Math.round((1500 + c.day * 40) * lawCut());
+      c.money -= fine;
+      c.reputation = clamp(c.reputation - 4, 0, 100);
+      notify("It came out that " + r.title + " " + list[i] + " " + t.flag + ". They are gone and the lawyers cost " + cash(fine) + ". A background check would have caught it.", true);
+      list.splice(i, 1);
+    }
+  });
+}
+
+// ------------------------------------------------------------------
+// Reverse engineering. Rivals sometimes ship real original games. Point
+// the lab at one, set how hard to push, and the studio tears it apart
+// and ships its own copy, which sells like crazy for a few nights. Push
+// too hard and the rival's lawyers notice.
+// ------------------------------------------------------------------
+const ORIGINAL_A = ["Moss", "Velvet", "Sprocket", "Lantern", "Pickle", "Quiet", "Thunder", "Marble", "Biscuit", "Neon", "Gravy", "Paper"];
+const ORIGINAL_B = ["Kingdom", "Goat Tycoon", "Tea Party", "Lighthouse", "Uprising", "Orchard", "Heist", "Snail Racing", "Choir", "Submarine", "Bakery", "Dungeon Dentist"];
+const KNOCK_STYLES = [t => t + " But Ours", t => "Super " + t, t => t + " Deluxe Plus", t => "Totally Not " + t, t => t + " Go", t => "Mega " + t + " Saga"];
+function poss(name) { return name + (name.endsWith("s") ? "'" : "'s"); }
+function rivalOriginal(rival) {
+  return { id: "o" + company.nextId++, rival: rival, title: pick(ORIGINAL_A) + " " + pick(ORIGINAL_B), line: pick(ALL_LINES), day: company.day, prog: 0 };
+}
+function ensureOriginals() {
+  const c = company;
+  if (c.originals) return;
+  c.originals = [rivalOriginal("Gloomsoft"), rivalOriginal("Megabyte Mills")];
+}
+function reEffort() { return rules().reEffort || 0; }
+function reBudget() { return reEffort() * 12; }
+function reAbility() {
+  const c = company;
+  const hackers = (c.secs || []).reduce((n, s) => n + 9 * perfMult("sec", s), 0);
+  const devs = (c.devs || []).reduce((n, d) => n + 3 * perfMult("dev", d), 0);
+  return Math.round((6 + hackers + devs) * reEffort() / 100);
+}
+function lawsuitOdds() { return Math.max(0.05, 0.15 + reEffort() / 300 - 0.08 * lawCount()); }
+function reNight() {
+  const c = company;
+  ensureOriginals();
+  if (!reEffort()) return;
+  const target = c.originals.find(o => o.id === c.reTarget) || c.originals[0];
+  if (!target) return;
+  c.reTarget = target.id;
+  c.money -= reBudget();
+  target.prog += reAbility();
+  if (target.prog < 100) return;
+  c.originals = c.originals.filter(o => o !== target);
+  c.reTarget = null;
+  const lines = openLineKeys();
+  const order = makeOffer(lines.includes(target.line) ? target.line : pick(lines));
+  order.knock = pick(KNOCK_STYLES)(target.title);
+  order.knockFrom = target.rival;
+  order.customer = "Full Meta Packet Originals";
+  order.own = true; order.pay = 0; order.premium = false; order.tag = null; order.prefix = null; order.suffix = null;
+  order.platform = pick(Object.keys(PLATFORMS));
+  order.status = "queued";
+  order.deadline = c.time + DAY_SECONDS * 30;
+  order.expiresAt = c.time + DAY_SECONDS * 30;
+  c.orders.push(order);
+  const r = (c.rivals || []).find(x => x.name === target.rival);
+  if (r) r.games = Math.max(0, r.games - 3);
+  notify("The lab cracked " + poss(target.rival) + " " + target.title + " wide open. " + order.knock + " is queued on the terminals and will sell like crazy for a few nights once it ships.", true);
+  if (Math.random() < lawsuitOdds()) {
+    const fine = Math.round((2500 + c.day * 120) * lawCut());
+    c.money -= fine;
+    c.reputation = clamp(c.reputation - 6, 0, 100);
+    notify(target.rival + " noticed " + order.knock + " looks exactly like " + target.title + " and sued. " + (lawCount() ? "Your lawyers got it down to " : "It cost ") + cash(fine) + ".", true);
+  }
+}
+function renderReLab() {
+  const c = company;
+  ensureOriginals();
+  const v = reEffort();
+  let html = `<h2 class="section-title spaced" id="sec-re">Reverse engineering lab</h2>
+    <p class="note">Rivals sometimes ship a real original game. Pick one and slide the lab up. Hackers and devs tear it apart overnight, and when the progress bar fills, the studio's own copy goes on the terminals under a new name. It earns big for a few nights once it ships and takes a bite out of the rival. The harder you push, the faster it goes, the more it costs, and the more likely the rival sues. Lawyers make that a lot less likely.</p>
+    <div class="row rules"><label class="rule"><span>Lab effort <b>${v || "off"}</b></span><input type="range" min="0" max="100" step="10" value="${v}" data-set="reEffort"></label>
+    <div class="row-sub">${v ? "Costs " + cash(reBudget()) + " a night and moves " + reAbility() + " points a night. Lawsuit odds on each knockoff are " + Math.round(lawsuitOdds() * 100) + " percent." : "The lab is off. Slide it up to start."} Ability comes from ${(c.secs || []).length} ${plural((c.secs || []).length, "hacker")} and ${(c.devs || []).length} ${plural((c.devs || []).length, "dev")}.</div></div>`;
+  if (!c.originals.length) html += `<p class="empty">No rival originals to copy right now. They will ship more.</p>`;
+  const tgt = c.originals.find(o => o.id === c.reTarget) || c.originals[0];
+  c.originals.forEach(o => {
+    const on = o === tgt;
+    html += `<div class="row"><div class="row-top"><div class="row-name">${o.title}</div><div class="row-state ${on ? "done" : ""}">${on ? "On the bench" : o.rival}</div></div>
+      <div class="row-sub">${poss(o.rival)} original ${lineLabel(o.line)} game from day ${o.day}.</div>
+      <div class="perf"><div class="perf-meter"><i style="width:${Math.min(100, o.prog)}%;background:#2463b0"></i></div><span class="perf-label">${Math.min(100, Math.round(o.prog))} of 100 torn down</span></div>
+      ${on ? "" : `<div class="actions"><button class="btn" data-do="reTarget" data-id="${o.id}">Put this one on the bench</button></div>`}</div>`;
+  });
+  return html;
+}
+
 function doAction(action, id) {
   const c = company;
   const order = typeof id === "number" ? findOrder(id) : null;
+  if (HIRE_ACTIONS[action]) {
+    const role = HIRE_ACTIONS[action];
+    if ((c[ROLE_LIST[role]] || []).length >= seats(role)) showToast("No free seats for that. Build more room in the tower.");
+    else openResumes(role);
+    render();
+    return;
+  }
 
   switch (action) {
     case "accept":
@@ -4704,6 +4960,14 @@ function doAction(action, id) {
         if (c.tower) c.tower.rooms = c.tower.rooms.filter(r => r.type !== k.key);
         notify("Canceled the " + k.name.toLowerCase() + ". People noticed.", true);
       }
+      break;
+    }
+    case "reTarget":
+      c.reTarget = id;
+      break;
+    case "hrToggle": {
+      if (!c.rules) c.rules = rules();
+      c.rules[id] = c.rules[id] ? 0 : 1;
       break;
     }
     case "mashBuild": {

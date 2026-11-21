@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.20. Added skyscraper, megatower, and billion dollar arcology with coffee booths, bedroom pods, medic pod, gym, grand lobby, and private floors.
+Latest change. 2026-11-20, v2026.11.20.21. Added resume hiring, the HR department, and the reverse engineering lab.
 
 Full history is in CHANGELOG.md.
