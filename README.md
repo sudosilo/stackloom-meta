@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.16. Renamed the game to Full Meta Packet and added a forever backlist with royalties and sleeper hits.
+Latest change. 2026-11-20, v2026.11.20.17. Added a variety counter of distinct products shipped.
 
 Full history is in CHANGELOG.md.

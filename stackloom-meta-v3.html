@@ -196,6 +196,8 @@
   .prem.lite { background: #e0a33a; }
   .prem.own { background: #1c2833; }
   .mash-card { border: 2px solid #8f6ee8; }
+  .variety-card { border: 2px solid #2463b0; }
+  .variety-num { font-size: 34px; font-weight: 800; color: #2463b0; font-variant-numeric: tabular-nums; margin: 4px 0; }
   .mash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
   .mash-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
   .mash-grid label.wide { grid-column: 1 / -1; }
@@ -2472,6 +2474,43 @@ function buildSpec(line, a, b, platform, finish) {
   notify("The mashup machine queued " + productTitle(order) + " on spec. It goes to whatever stores you have deals with.", true);
 }
 
+// The variety counter: every distinct product the studio has shipped,
+// counted against every product the engines could possibly make.
+const OPTION_FIELDS = ["pieceSet", "board", "speed", "level", "palette", "pace", "game", "math", "length", "colors", "moves", "size", "lives", "energy", "rot", "bombs"];
+function variantKey(order) {
+  return [order.line || "blocks", order.theme, order.mix || "", order.premium ? 1 : 0, order.platform || "mobile", order.finish || "", order.prefix || "", order.suffix || ""]
+    .concat(OPTION_FIELDS.map(f => order[f] == null ? "" : order[f])).join("|");
+}
+function possibleVariants() {
+  const K = o => Object.keys(o).length;
+  const opts = { blocks: K(PIECE_SETS) * K(BOARDS) * K(SPEEDS), doku: K(DOKU_LEVELS), bubble: K(BUBBLE_PALETTES) * K(BUBBLE_PACES), cards: K(CARD_GAMES),
+    runner: K(RUNNER_MATH) * K(RUNNER_LENGTHS), match: K(MATCH_COLORS) * K(MATCH_MOVES), jam: K(JAM_SIZES) * K(JAM_LIVES), mob: K(MOB_ENERGY) * K(MOB_LENGTHS),
+    farm: K(FARM_SIZES) * K(FARM_ROT), shooter: K(SHOOT_PACE) * K(SHOOT_BOMBS) };
+  const decor = 2 * K(PLATFORMS) * (K(FINISHES) + 1) * (TITLE_PREFIXES.length + 1) * (TITLE_SUFFIXES.length + 1);
+  return Object.keys(opts).reduce((n, l) => { const k = K(themeMapFor(l)); return n + k * k * opts[l] * decor; }, 0);
+}
+function recordVariant(order) {
+  const c = company;
+  if (!c.variants) c.variants = {};
+  const key = variantKey(order);
+  if (c.variants[key]) return;
+  c.variants[key] = 1;
+  const n = Object.keys(c.variants).length;
+  if ([10, 25, 50, 100, 250, 500, 1000, 2500, 5000].includes(n)) notify("Variety milestone. The studio has now shipped " + n.toLocaleString("en-US") + " different products. Only " + (possibleVariants() - n).toLocaleString("en-US") + " to go.", true);
+}
+function renderVarietyCounter() {
+  const c = company;
+  const n = Object.keys(c.variants || {}).length, total = possibleVariants();
+  const byLine = {};
+  Object.keys(c.variants || {}).forEach(k => { const l = k.split("|")[0]; byLine[l] = (byLine[l] || 0) + 1; });
+  const lines = Object.keys(byLine).sort((a, b) => byLine[b] - byLine[a]).map(l => lineName(l) + " " + byLine[l]).join(", ");
+  return `<article class="order variety-card"><div class="order-body">
+    <div class="customer">Variety counter</div>
+    <div class="variety-num">${n.toLocaleString("en-US")}</div>
+    <div class="spec">different products shipped, out of ${total.toLocaleString("en-US")} the engines could possibly make. ${lines ? "By engine: " + lines + "." : "Ship something."}</div>
+  </div></article>`;
+}
+
 function renderMashup() {
   const c = company;
   const lines = specLines();
@@ -3556,6 +3595,7 @@ function shipOrder(order) {
   c.reputation = clamp(c.reputation + repChange, 0, 100);
   c.shipped++;
   addBacklist(order);
+  recordVariant(order);
   c.catalog.unshift({
     id: order.id, customer: order.customer, spec: orderSpec(order), day: c.day, premium: !!order.premium,
     bug: !!order.bug, file: withBug(buildThemeFile(order), order.bug),
@@ -4320,6 +4360,7 @@ function renderOffice() {
 
 function renderGames() {
   let html = `<p class="note">Every block game runs on the block engine, every doku on the doku engine, every bubble shooter on the bubble engine, every deck on the deck engine, every gate runner on the runner engine, every match three on the match engine, every pull out puzzle on the jam engine, every energy and jobs game on the mob engine, every crop timer on the farm engine, and every vertical shooter on the shooter engine. The only difference between products on the same engine is the theme file. Premium products are the same file with one flag flipped and a bigger invoice. Tap View file to see one.</p>`;
+  html += renderVarietyCounter();
   html += renderMashup();
   html += renderHackCard();
   [HOUSE_GAME, HOUSE_DOKU, HOUSE_BUBBLE, HOUSE_DECK, HOUSE_POKER, HOUSE_RUNNER, HOUSE_MATCH, HOUSE_JAM, HOUSE_MOB, HOUSE_FARM, HOUSE_SHOOTER, ...company.catalog].forEach(game => {
