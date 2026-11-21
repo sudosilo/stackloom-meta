@@ -493,6 +493,7 @@
 
     <h2>The office</h2>
     <p>Bigger offices hold more terminals and more staff, and cost more rent. Upgrades on the Office tab make the whole studio faster or cleaner.</p>
+    <p>Past the campus the buildings get stupid. The skyscraper, the megatower, and finally the billion dollar arcology with more floors than anybody needs. Up there you can build coffee booths on every other floor, bedroom pods so nobody goes home, a medic pod, a gym, a grand lobby, and private floors where your best people each get a whole floor to themselves. Or skip all of it, fire the sales team, and live off royalties. Your call.</p>
 
     <h2>Carrot or stick</h2>
     <p>Once the studio moves into the shared studio, pick a management style on the Team tab. Stick pays below market and runs on fear: performance slides faster, firing someone scares everyone else into working, and people at rock bottom quit. Carrot pays what people are worth: payroll climbs, but so does performance. Raises bump someone's pay and performance right away, with diminishing returns, because past a point no amount of money keeps a grown man child focused on his day job.</p>
@@ -1413,7 +1414,10 @@ const OFFICES = [
   { name: "Garage", terminals: 2, agents: 1, devs: 0, rent: 0, cost: 0 },
   { name: "Shared studio", terminals: 6, agents: 2, devs: 1, rent: 60, cost: 2000 },
   { name: "Office floor", terminals: 12, agents: 4, devs: 2, rent: 180, cost: 7000 },
-  { name: "Campus", terminals: 24, agents: 8, devs: 3, rent: 450, cost: 20000 }
+  { name: "Campus", terminals: 24, agents: 8, devs: 3, rent: 450, cost: 20000 },
+  { name: "Skyscraper", terminals: 96, agents: 32, devs: 12, rent: 1500, cost: 150000 },
+  { name: "Megatower", terminals: 300, agents: 100, devs: 40, rent: 9000, cost: 2500000 },
+  { name: "Billion dollar arcology", terminals: 900, agents: 300, devs: 120, rent: 60000, cost: 1000000000 }
 ];
 
 const UPGRADES = [
@@ -1427,6 +1431,16 @@ const UPGRADES = [
     text: "Terminals write theme files from a short description instead of by hand. Builds go faster and customers pay more." }
 ];
 
+// Big studios run out of names, so new hires get a fresh one from a long
+// list, then a last initial.
+const EXTRA_NAMES = ["Bix", "Cleo", "Dorian", "Effie", "Gus", "Hana", "Ike", "Jojo", "Kip", "Lark", "Mina", "Ned", "Opal", "Pax", "Quinn", "Rue", "Sol", "Tam", "Ugo", "Vee", "Wes", "Xan", "Yuki", "Zed", "Arlo", "Bea", "Cass", "Dex", "Esme", "Finn", "Gwen", "Hal", "Iris", "Jett", "Koa", "Lou", "Milo", "Nova", "Otis", "Pia", "Remy", "Sage", "Toby", "Uma", "Vic", "Wynn", "Yara", "Zuzu"];
+function freshName(pool, list) {
+  const used = new Set(list || []);
+  for (const n of pool.concat(EXTRA_NAMES)) if (!used.has(n)) return n;
+  const all = pool.concat(EXTRA_NAMES);
+  for (let k = 0; k < 26 * all.length; k++) { const n = all[k % all.length] + " " + "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(k / all.length) % 26] + "."; if (!used.has(n)) return n; }
+  return all[0] + " " + used.size;
+}
 const AGENT_NAMES = ["Pim", "Rook", "Juno", "Tock", "Nib", "Orla", "Fen", "Wren"];
 const DEV_NAMES = ["Marlo", "Kestrel", "Ines"];
 
@@ -1862,7 +1876,7 @@ function runInHouse(dt) {
     const line = devFocus(name);
     if (line === "orders") return;
     if (!openLineKeys().includes(line) || lineFrozen(line)) return;
-    c.devWork[name] = (c.devWork[name] || 0) + dt * perfMult("dev", name);
+    c.devWork[name] = (c.devWork[name] || 0) + dt * perfMult("dev", name) * (c.upgrades.bunks ? 1.25 : 1);
     if (c.devWork[name] < inHouseSeconds()) return;
     c.devWork[name] = 0;
     const order = makeOffer(line);
@@ -1928,7 +1942,7 @@ function renderCves() {
 // skyline next to yours, sized by how many games each one has shipped.
 // ------------------------------------------------------------------
 const TOWER_SLOTS = 6;
-const TOWER_FLOORS = [1, 2, 4, 6];
+const TOWER_FLOORS = [1, 2, 4, 6, 16, 40, 120];
 const ROOM_TYPES = [
   { key: "terminal", name: "Terminal bay", w: 2, cost: 300, role: "terminal", seats: 3, color: "#dfe9f6", text: "Holds three terminals, the machines that build games." },
   { key: "server", short: "Servers", name: "Server closet", w: 1, cost: 250, role: "agent", seats: 1, color: "#d9dde3", text: "Room for one agent, the AI program that runs up to three terminals." },
@@ -1944,12 +1958,40 @@ const ROOM_TYPES = [
   { key: "snacks", short: "Snacks", name: "Snack machine", w: 1, cost: 300, perk: "snacks", glyph: "🍫", color: "#fdf3df", text: "Perk. Chips and candy that sometimes get stuck." },
   { key: "coffee", short: "Coffee", name: "Coffee bar", w: 1, cost: 900, perk: "coffee", glyph: "☕", color: "#f6efe0", text: "Perk. Coffee is for closers." },
   { key: "lounge", name: "Lounge", w: 2, cost: 2500, perk: "lounge", glyph: "🛋️", color: "#eef4fb", text: "Perk. Couches, a TV, and a foosball table." },
-  { key: "catering", name: "Cafeteria", w: 2, cost: 1200, perk: "catering", glyph: "🍱", color: "#f4f8ec", text: "Perk. Daily catering for the whole team." }
+  { key: "catering", name: "Cafeteria", w: 2, cost: 1200, perk: "catering", glyph: "🍱", color: "#f4f8ec", text: "Perk. Daily catering for the whole team." },
+  { key: "booth", short: "Brew", name: "Coffee booth", w: 1, cost: 4000, office: 4, glyph: "☕", color: "#efe2cf", text: "Build as many as you want. Every booth perks the whole tower up a little more, up to ten of them, and salespeople close harder. Costs 60 dollars a day each." },
+  { key: "bunks", short: "Bunks", name: "Bedroom pod", w: 2, cost: 25000, perk: "bunks", glyph: "🛏️", color: "#e8e4f6", text: "Perk. Bunk beds so nobody has to go home. Terminals run faster and devs crank out in house games faster." },
+  { key: "medic", short: "Medic", name: "Medic pod", w: 1, cost: 40000, perk: "medic", glyph: "🩺", color: "#fde8e8", text: "Perk. A nurse who makes sure these nerds eat a vegetable. Nobody drops below a floor of performance and fewer people quit." },
+  { key: "gym", name: "Gym", w: 2, cost: 60000, perk: "gym", glyph: "🏋️", color: "#e1f1f7", text: "Perk. Treadmills, a squat rack, and a mirror nobody uses. Big performance lift, bigger with the medic pod." },
+  { key: "lobby", name: "Grand lobby", w: 3, cost: 250000, perk: "lobby", glyph: "🏛️", color: "#f7efd6", text: "Perk. Marble, a fountain, and a receptionist named Gretchen. Reputation climbs every night and customers pay more." },
+  { key: "suite", name: "Private floor", w: 6, cost: 500000, office: 5, color: "#e6f0fb", text: "A whole floor for one person with a bed, a gym, a coffee machine, and a door that locks. It goes to your best person without one. They stay on fire and never quit." }
 ];
 const ROLE_LIST = { terminal: "terminals", agent: "agents", dev: "devs", qa: "qas", mgr: "mgrs", sec: "secs", law: "laws", mkt: "mkts", sales: "sales" };
 const ROLE_COLOR = { dev: "#2fa38f", qa: "#3f9a3a", mgr: "#b07a12", sec: "#5b4bdb", law: "#55606e", mkt: "#d14f9c", sales: "#c0392b", design: "#e8862e" };
 
 function roomType(key) { return ROOM_TYPES.find(t => t.key === key); }
+function roomOffice(t) { const pk = t.perk && PERKS.find(k => k.key === t.perk); return t.office || (pk ? pk.office : 0); }
+function roomCount(type) { return towerRooms().filter(r => r.type === type).length; }
+function boothLift() { return Math.min(10, roomCount("booth")); }
+// Private floors go to the best performer who does not have one yet.
+function staffExists(role, name) { const r = STAFF_ROLES.find(x => x.role === role); return !!r && (company[r.list] || []).includes(name); }
+function assignSuites() {
+  const c = company;
+  const suites = towerRooms().filter(r => r.type === "suite");
+  suites.forEach(r => { if (r.owner && !staffExists(r.owner.role, r.owner.name)) { notify("The private floor on " + (r.floor + 1) + " is empty now. Somebody else is moving in.", true); r.owner = null; } });
+  const taken = new Set(suites.filter(r => r.owner).map(r => r.owner.role + ":" + r.owner.name));
+  suites.filter(r => !r.owner).forEach(r => {
+    let best = null;
+    STAFF_ROLES.forEach(x => (c[x.list] || []).forEach(n => {
+      const key = x.role + ":" + n;
+      if (taken.has(key)) return;
+      const p = getPerf(x.role, n);
+      if (!best || p > best.p) best = { role: x.role, name: n, title: x.title, p: p };
+    }));
+    if (best) { r.owner = { role: best.role, name: best.name, title: best.title }; taken.add(best.role + ":" + best.name); notify(best.title + " " + best.name + " got the keys to a private floor on " + (r.floor + 1) + ".", true); }
+  });
+}
+function hasSuite(role, name) { return towerRooms().some(r => r.type === "suite" && r.owner && r.owner.role === role && r.owner.name === name); }
 function towerFloors() { return Math.max(TOWER_FLOORS[company.officeLevel], ...((company.tower || { rooms: [] }).rooms.map(r => r.floor + 1)), 1); }
 function towerRooms() { return (company.tower && company.tower.rooms) || []; }
 function seats(role) { return towerRooms().reduce((n, r) => { const t = roomType(r.type); return n + (t && t.role === role ? t.seats : 0); }, 0); }
@@ -1971,11 +2013,11 @@ function placeRoom(type, floor, slot, free) {
   const t = roomType(type);
   if (!fits(type, floor, slot)) { showToast("That does not fit there."); return false; }
   if (t.perk && c.upgrades[t.perk]) { showToast("The studio already has one of those."); return false; }
-  const pk = t.perk && PERKS.find(k => k.key === t.perk);
-  if (pk && c.officeLevel < pk.office) { showToast("That needs the " + OFFICES[pk.office].name.toLowerCase() + " or bigger."); return false; }
+  if (c.officeLevel < roomOffice(t)) { showToast("That needs the " + OFFICES[roomOffice(t)].name.toLowerCase() + " or bigger."); return false; }
   if (!free && !spend(t.cost)) return false;
   c.tower.rooms.push({ id: c.nextId++, type: type, floor: floor, slot: slot });
   if (t.perk) c.upgrades[t.perk] = true;
+  if (type === "suite") assignSuites();
   return true;
 }
 function autoPlace(type) {
@@ -2097,7 +2139,7 @@ function renderTower() {
   ensureTower();
   const c = company;
   const floors = towerFloors(), built = TOWER_FLOORS[c.officeLevel];
-  const SW = 52, FH = 58, X0 = 14, ROOF = 46, EW = 30;
+  const SW = 52, FH = 58, X0 = floors >= 100 ? 24 : floors >= 10 ? 20 : 14, ROOF = 46, EW = 30;
   const EX = X0 + SW * TOWER_SLOTS + 4;
   const W = X0 * 2 + SW * TOWER_SLOTS + EW + 4, H = ROOF + floors * FH + 14;
   const filled = {};
@@ -2143,7 +2185,12 @@ function renderTower() {
     svg += `<g data-do="room" data-id="${r.id}"><rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${FH - 6}" fill="${t.color}" stroke="#1c2833" stroke-width="1.5"/>`;
     svg += `<text x="${x + 6}" y="${y + 12}" font-size="7.5" font-weight="700" fill="#1c2833">${(t.w === 1 && t.short ? t.short : t.name).toUpperCase()}</text>`;
     const base = y + FH - 6;
-    if (t.perk) {
+    if (r.type === "suite") {
+      const who = r.owner ? r.owner.name.toUpperCase() + "'S FLOOR" : "MOVE IN READY";
+      svg += `<text x="${x + w - 8}" y="${y + 12}" font-size="8" font-weight="800" text-anchor="end" fill="#2463b0">${who}</text>`;
+      svg += `<text x="${x + w * 0.18}" y="${base - 8}" font-size="18" text-anchor="middle">🛏️</text><text x="${x + w * 0.38}" y="${base - 8}" font-size="18" text-anchor="middle">🖥️</text><text x="${x + w * 0.58}" y="${base - 8}" font-size="18" text-anchor="middle">🏋️</text><text x="${x + w * 0.78}" y="${base - 8}" font-size="18" text-anchor="middle">☕</text>`;
+      if (r.owner) { const h = floorHash(r.owner.name); svg += `<g class="typing"><circle cx="${x + w * 0.46}" cy="${base - 24}" r="4" fill="${FLOOR_SKIN[h % FLOOR_SKIN.length]}" stroke="#1c2833" stroke-width="0.8"/><rect x="${x + w * 0.46 - 4}" y="${base - 20}" width="8" height="10" rx="2" fill="${ROLE_COLOR[r.owner.role] || "#2463b0"}"/></g>`; }
+    } else if (t.glyph) {
       svg += `<text x="${x + w / 2}" y="${base - 10}" font-size="22" text-anchor="middle">${t.glyph}</text>`;
     } else if (t.role === "terminal") {
       const start = filled.terminal || 0;
@@ -2204,14 +2251,14 @@ function renderTowerTab() {
 function openBuildSheet(floor, slot) {
   const c = company;
   const opts = ROOM_TYPES.map(t => {
-    const pk = t.perk && PERKS.find(k => k.key === t.perk);
-    const ok = fits(t.key, floor, slot) && !(pk && c.officeLevel < pk.office);
+    const locked = c.officeLevel < roomOffice(t);
+    const ok = fits(t.key, floor, slot) && !locked;
     const have = t.perk && c.upgrades[t.perk];
     const seatLine = t.role ? (t.role === "terminal" ? t.seats + " terminals" : t.seats + " " + plural(t.seats, "seat")) + ", " : "";
     return `<button class="build-opt" data-build="${t.key}" ${!ok || have ? "disabled" : ""}>
       <span class="bo-swatch" style="background:${t.color}">${t.glyph || ""}</span>
       <span class="bo-text"><b>${t.name}</b><span>${seatLine}${t.w} ${plural(t.w, "slot")} wide. ${t.text}</span></span>
-      <span class="bo-cost">${have ? "Built" : !ok ? "No room" : cash(t.cost)}</span></button>`;
+      <span class="bo-cost">${have ? "Built" : locked ? "Needs " + OFFICES[roomOffice(t)].name.toLowerCase() : !ok ? "No room" : cash(t.cost)}</span></button>`;
   }).join("");
   document.getElementById("buildTitle").textContent = "Build on floor " + (floor + 1);
   document.getElementById("buildBody").innerHTML = opts;
@@ -2705,7 +2752,8 @@ function campaigns() { return activeEvents().filter(a => a.id === "campaign"); }
 function campaignCost() { return 250 + company.day * 12; }
 function salesTeam() { return company.sales || []; }
 function salesPayMult() {
-  return 1 + salesTeam().reduce((sum, n) => sum + (0.07 + (company.upgrades.coffee ? 0.04 : 0)) * perfMult("sales", n), 0);
+  const brew = (company.upgrades.coffee ? 0.04 : 0) + Math.min(10, roomCount("booth")) * 0.005;
+  return 1 + (company.upgrades.lobby ? 0.1 : 0) + salesTeam().reduce((sum, n) => sum + (0.07 + brew) * perfMult("sales", n), 0);
 }
 function repeatChance() { return Math.min(0.6, salesTeam().reduce((sum, n) => sum + 0.15 * perfMult("sales", n), 0)); }
 function launchCampaign(line) {
@@ -2789,12 +2837,20 @@ const PERKS = [
   { key: "lounge", name: "Lounge", glyph: "🛋️", cost: 2500, daily: 40, lift: 4, office: 1,
     text: "Couches, a TV, and a foosball table nobody is good at. People actually want to come in." },
   { key: "catering", name: "Daily catering", glyph: "🍱", cost: 1200, dailyPerHead: 12, lift: 6, office: 2,
-    text: "Real lunch every day. It costs a lot more as the team grows, but nobody leaves for food anymore." }
+    text: "Real lunch every day. It costs a lot more as the team grows, but nobody leaves for food anymore." },
+  { key: "bunks", name: "Bedroom pod", glyph: "🛏️", cost: 25000, daily: 300, lift: 3, office: 4,
+    text: "Bunk beds and blackout curtains so nobody has to go home. Terminals run faster and devs crank out in house games faster. Their families have questions." },
+  { key: "medic", name: "Medic pod", glyph: "🩺", cost: 40000, daily: 500, lift: 3, office: 4,
+    text: "A nurse who checks blood pressure and makes everybody eat one vegetable a day. Nobody's performance drops below thirty and half as many people quit." },
+  { key: "gym", name: "Gym", glyph: "🏋️", cost: 60000, daily: 400, lift: 6, office: 4,
+    text: "Treadmills, a squat rack, and a mirror nobody uses. If you have an office you have a gym. Even more lift with the medic pod watching." },
+  { key: "lobby", name: "Grand lobby", glyph: "🏛️", cost: 250000, daily: 2000, lift: 2, office: 5,
+    text: "Marble floors, a fountain, and a receptionist named Gretchen. Reputation climbs a little every night and customers pay more because the place looks expensive." }
 ];
 function headcount() { return STAFF_ROLES.reduce((n, r) => n + (company[r.list] || []).length, 0); }
 function perkDaily(k) { return k.dailyPerHead ? k.dailyPerHead * headcount() : k.daily; }
-function perkLift() { return PERKS.reduce((sum, k) => sum + (company.upgrades[k.key] ? k.lift : 0), 0); }
-function perkBills() { return PERKS.reduce((sum, k) => sum + (company.upgrades[k.key] ? perkDaily(k) : 0), 0); }
+function perkLift() { return PERKS.reduce((sum, k) => sum + (company.upgrades[k.key] ? k.lift : 0), 0) + boothLift() + (company.upgrades.gym && company.upgrades.medic ? 2 : 0); }
+function perkBills() { return PERKS.reduce((sum, k) => sum + (company.upgrades[k.key] ? perkDaily(k) : 0), 0) + roomCount("booth") * 60 + roomCount("suite") * 1500; }
 function raisesOpen() { return company.officeLevel >= 1; }
 
 // Manager rules: with a manager on staff, set a line to fire anyone who
@@ -2844,7 +2900,7 @@ function drift() {
   if (c.style === "stick" && raisesOpen()) STAFF_ROLES.forEach(r => {
     const list = c[r.list] || [];
     for (let i = list.length - 1; i >= 0; i--) {
-      if (getPerf(r.role, list[i]) < 15 && Math.random() < 0.3) {
+      if (getPerf(r.role, list[i]) < 15 && Math.random() < (c.upgrades.medic ? 0.15 : 0.3) && !hasSuite(r.role, list[i])) {
         notify(r.title + " " + list[i] + " quit and took the stapler.", true);
         list.splice(i, 1);
       }
@@ -2852,7 +2908,9 @@ function drift() {
   });
   STAFF_ROLES.forEach(r => (c[r.list] || []).forEach(name => {
     const before = getPerf(r.role, name);
-    const after = before + Math.random() * 20 - 12 + perkLift() + mgmtStyle().drift + Math.min(payLevel(r.role, name), 3) * 2;
+    let after = before + Math.random() * 20 - 12 + perkLift() + mgmtStyle().drift + Math.min(payLevel(r.role, name), 3) * 2;
+    if (c.upgrades.medic) after = Math.max(30, after);
+    if (hasSuite(r.role, name)) after = Math.max(85, after + 15);
     setPerf(r.role, name, after);
     if (before >= 25 && getPerf(r.role, name) < 25) notify(r.title + " " + name + " " + pick(r.role === "agent" ? AGENT_SLACK_LINES : SLACK_LINES), true);
   }));
@@ -2923,6 +2981,7 @@ function terminalSpeed(i) {
   let speed = 1;
   if (company.upgrades.engine) speed *= 1.3;
   if (company.upgrades.generator) speed *= 1.2;
+  if (company.upgrades.bunks) speed *= 1.15;
   if (isBoosted(i)) speed *= 1.25 * perfMult("dev", devFor(i));
   if (isManaged(i)) speed *= perfMult("agent", agentFor(i));
   speed *= eventMod("speed");
@@ -3743,7 +3802,9 @@ function payBills() {
   c.money -= bill;
   notify("Day " + (c.day - 1) + " ended. Rent, salaries, and upkeep cost " + cash(bill) + ".");
   checkCves();
+  assignSuites();
   drift();
+  if (c.upgrades.lobby) c.reputation = Math.min(100, c.reputation + 2);
   runManagerRules();
   rivalNight();
   storeNight();
@@ -4027,7 +4088,7 @@ function renderFloor() {
   const c = company, L = c.officeLevel;
   const cubes = L >= 2, D = 46, COLS = 3, PAD = 8, LABEL = 22;
   const agentBusy = a => c.terminals.slice(a * 3, a * 3 + 3).some(t => t.job != null);
-  const floorColor = ["#e6e1d8", "#f1e6d3", "#e3e9f0", "#e1eaf4"][L];
+  const floorColor = ["#e6e1d8", "#f1e6d3", "#e3e9f0", "#e1eaf4", "#dde8f5", "#e8eef7", "#f2efe6"][L] || "#e1eaf4";
   const deskColor = L === 0 ? "#b98c5e" : L === 1 ? "#c9a27a" : "#d5dbe2";
   const pods = floorPods();
   const podW = COLS * D + PAD * 2;
@@ -4386,6 +4447,8 @@ function renderOffice() {
       </div>`;
   });
 
+  if (c.officeLevel >= 4) html += `<h2 class="section-title spaced">Big money rooms</h2>
+    <p class="note">Build these from the Tower tab. Coffee booths stack, ${roomCount("booth")} built, lifting everybody ${boothLift()} more a night. Private floors give one person a whole floor of their own, ${roomCount("suite")} built, ${towerRooms().filter(r => r.type === "suite" && r.owner).map(r => r.owner.title + " " + r.owner.name).join(", ") || "nobody moved in yet"}. Each private floor costs ${cash(1500)} a day to keep stocked.</p>`;
   html += `<h2 class="section-title spaced">Perks</h2>
     <p class="note">Perks push everyone's performance up a little every night, on top of whatever else is going on. Vending machines are cheap enough for a stick shop. Catering is a carrot shop move and costs more as the team grows. Cancel any perk to stop paying for it. Perks are costing ${cash(perkBills())} a day.</p>`;
   PERKS.forEach(k => {
@@ -4581,7 +4644,7 @@ function doAction(action, id) {
     case "hireAgent":
       if (c.agents.length >= seats("agent")) showToast("No free agent seats. Build more room in the tower.");
       else if (spend(PRICES.agent)) {
-        const name = AGENT_NAMES[c.agents.length % AGENT_NAMES.length];
+        const name = freshName(AGENT_NAMES, c.agents);
         c.agents.push(name);
         setPerf("agent", name, 55 + Math.random() * 40);
         notify("Hired Agent " + name + ".", true);
@@ -4590,7 +4653,7 @@ function doAction(action, id) {
     case "hireDev":
       if (c.devs.length >= seats("dev")) showToast("No free dev seats. Build more room in the tower.");
       else if (spend(PRICES.dev)) {
-        const name = DEV_NAMES[c.devs.length % DEV_NAMES.length];
+        const name = freshName(DEV_NAMES, c.devs);
         c.devs.push(name);
         setPerf("dev", name, 55 + Math.random() * 40);
         notify("Hired Dev " + name + ".", true);
@@ -4608,7 +4671,7 @@ function doAction(action, id) {
       if (!c.mkts) c.mkts = [];
       if (c.mkts.length >= seats("mkt")) showToast("No free marketing seats. Build more room in the tower.");
       else if (spend(PRICES.mkt)) {
-        const name = MKT_NAMES[c.mkts.length % MKT_NAMES.length];
+        const name = freshName(MKT_NAMES, c.mkts);
         c.mkts.push(name);
         setPerf("mkt", name, 55 + Math.random() * 40);
         notify("Hired Marketer " + name + ".", true);
@@ -4618,7 +4681,7 @@ function doAction(action, id) {
       if (!c.sales) c.sales = [];
       if (c.sales.length >= seats("sales")) showToast("No free sales seats. Build more room in the tower.");
       else if (spend(PRICES.sales)) {
-        const name = SALES_NAMES[c.sales.length % SALES_NAMES.length];
+        const name = freshName(SALES_NAMES, c.sales);
         c.sales.push(name);
         setPerf("sales", name, 55 + Math.random() * 40);
         notify("Hired Salesperson " + name + ". Always be closing.", true);
@@ -4684,7 +4747,7 @@ function doAction(action, id) {
       if (!c.qas) c.qas = [];
       if (c.qas.length >= seats("qa")) showToast("No free tester seats. Build more room in the tower.");
       else if (spend(PRICES.qa)) {
-        const name = QA_NAMES[c.qas.length % QA_NAMES.length];
+        const name = freshName(QA_NAMES, c.qas);
         c.qas.push(name);
         setPerf("qa", name, 55 + Math.random() * 40);
         notify("Hired Tester " + name + ".", true);
@@ -4694,7 +4757,7 @@ function doAction(action, id) {
       if (!c.mgrs) c.mgrs = [];
       if (c.mgrs.length >= seats("mgr")) showToast("No free manager seats. Build more room in the tower.");
       else if (spend(PRICES.mgr)) {
-        const name = MGR_NAMES[c.mgrs.length % MGR_NAMES.length];
+        const name = freshName(MGR_NAMES, c.mgrs);
         c.mgrs.push(name);
         setPerf("mgr", name, 55 + Math.random() * 40);
         notify("Hired Manager " + name + ".", true);
@@ -4704,7 +4767,7 @@ function doAction(action, id) {
       if (!c.laws) c.laws = [];
       if (c.laws.length >= seats("law")) showToast("No free lawyer seats. Build more room in the tower.");
       else if (spend(PRICES.law)) {
-        const name = LAW_NAMES[c.laws.length % LAW_NAMES.length];
+        const name = freshName(LAW_NAMES, c.laws);
         c.laws.push(name);
         setPerf("law", name, 55 + Math.random() * 40);
         notify("Hired Lawyer " + name + ".", true);
@@ -4714,7 +4777,7 @@ function doAction(action, id) {
       if (!c.secs) c.secs = [];
       if (c.secs.length >= seats("sec")) showToast("No free security seats. Build more room in the tower.");
       else if (spend(PRICES.sec)) {
-        const name = SEC_NAMES[c.secs.length % SEC_NAMES.length];
+        const name = freshName(SEC_NAMES, c.secs);
         c.secs.push(name);
         setPerf("sec", name, 55 + Math.random() * 40);
         notify("Hired security engineer " + name + ".", true);
