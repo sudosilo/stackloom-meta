@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f1f4f7">
-<title>Stackloom</title>
+<title>Full Meta Packet</title>
 <style>
   :root {
     --page: #f1f4f7;
@@ -465,7 +465,7 @@
 
 <div id="help" class="help" hidden>
   <div class="help-top">
-    <h1>How Stackloom works</h1>
+    <h1>How Full Meta Packet works</h1>
     <button id="helpClose" class="btn primary">Got it</button>
   </div>
   <div class="help-body">
@@ -497,7 +497,7 @@
     <p>The Office tab sells perks that lift everyone's performance every night: cheap soda and snack machines for a stick shop, a coffee bar, a lounge, and daily catering that costs more as the team grows. Hire a manager and you can set house rules: fire anyone who sinks below a line, and give a raise to anyone who stays above a line for enough nights in a row. The lines show up as red and green ticks on every performance meter.</p>
 
     <h2>Variety, mashups, and stores</h2>
-    <p>Every order comes with a real product title, like Turbo Burrito Jam Remastered or Lil Fang Feud Idle. It also comes in a mobile, desktop, or console version, and some get a finish like foil, holographic, rainbow, glow in the dark, glitch, or retro CRT that shows up on screen when you play it. Lite versions are free to play: they pay half up front and milk microtransactions later. Remasters only show up for games you already shipped, and they build fast. Mashups splice two skins on the same engine, pay more, and break more. The mashup machine on the Games tab builds mashups on spec under your own label, and storefront deals on the Office tab put every game you have shipped on the shelf to earn a little every night.</p>
+    <p>Royalties never stop: every game you ever ship stays on store shelves earning a little forever, so a few hundred forgotten games pay somebody's wages, and an old flop can turn into a sleeper hit overnight. Every order comes with a real product title, like Turbo Burrito Jam Remastered or Lil Fang Feud Idle. It also comes in a mobile, desktop, or console version, and some get a finish like foil, holographic, rainbow, glow in the dark, glitch, or retro CRT that shows up on screen when you play it. Lite versions are free to play: they pay half up front and milk microtransactions later. Remasters only show up for games you already shipped, and they build fast. Mashups splice two skins on the same engine, pay more, and break more. The mashup machine on the Games tab builds mashups on spec under your own label, and storefront deals on the Office tab put every game you have shipped on the shelf to earn a little every night.</p>
 
     <h2>Marketing and sales</h2>
     <p>Marketers run ad campaigns that pump one product line for a few days, so you can ride a streamer craze harder or dig out of a rival's release. Salespeople get more money out of every order, keep customers waiting longer, and turn happy customers into repeat clients. Coffee is for closers, so the lobby coffee bar makes sales squeeze harder.</p>
@@ -840,7 +840,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v4.3";
+const VERSION = "Full Meta Packet v4.4";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -1718,6 +1718,9 @@ function checkCves() {
       open.forEach(id => {
         const g = c.catalog.find(x => x.id === id);
         if (g) g.pulled = true;
+        ensureBacklist();
+        const b = company.backlist.find(x => x.id === id);
+        if (b) b.x = 1;
       });
       c.orders = c.orders.filter(o => !(o.patch && o.cveId === v.cve && o.status !== "building"));
       c.orders.forEach(o => { if (o.patch && o.cveId === v.cve) { if (o.terminal >= 0) c.terminals[o.terminal].job = null; o.status = "gone"; } });
@@ -2071,8 +2074,8 @@ function renderTower() {
   const riders = headcount() ? `<svg x="${EX + 3}" y="${carY(0)}" width="${EW - 6}" height="${FH - 20}" overflow="visible">${anim}<circle cx="${(EW - 6) / 2}" cy="${(FH - 20) / 2 - 2}" r="4" fill="#f1c9a5" stroke="#1c2833" stroke-width="0.8"/><rect x="${(EW - 6) / 2 - 4}" y="${(FH - 20) / 2 + 2}" width="8" height="10" rx="2" fill="#2463b0"/></svg>` : "";
   svg += `<g><rect x="${EX + 3}" y="${carY(0)}" width="${EW - 6}" height="${FH - 20}" rx="2" fill="#f6d98a" stroke="#1c2833" stroke-width="1.5">${anim}</rect>${riders}</g>`;
   svg += `<line x1="${EX + EW / 2}" y1="${ROOF - 6}" x2="${EX + EW / 2}" y2="${carY(0)}" stroke="#1c2833" stroke-width="1.2">${floors > 1 ? `<animate attributeName="y2" values="${vals.join(";")}" dur="${dur}s" repeatCount="indefinite"/>` : ""}</line>`;
-  svg += `<rect x="${W / 2 - 70}" y="8" width="140" height="24" rx="4" fill="#2463b0" stroke="#1c2833" stroke-width="2"/><text x="${W / 2}" y="25" font-size="13" font-weight="800" text-anchor="middle" fill="#ffffff" letter-spacing="2">STACKLOOM</text>`;
-  svg += `<line x1="${W / 2 - 50}" y1="32" x2="${W / 2 - 50}" y2="${ROOF - 8}" stroke="#1c2833" stroke-width="2"/><line x1="${W / 2 + 50}" y1="32" x2="${W / 2 + 50}" y2="${ROOF - 8}" stroke="#1c2833" stroke-width="2"/>`;
+  svg += `<rect x="${W / 2 - 100}" y="8" width="200" height="24" rx="4" fill="#2463b0" stroke="#1c2833" stroke-width="2"/><text x="${W / 2}" y="25" font-size="13" font-weight="800" text-anchor="middle" fill="#ffffff" letter-spacing="1.5">FULL META PACKET</text>`;
+  svg += `<line x1="${W / 2 - 70}" y1="32" x2="${W / 2 - 70}" y2="${ROOF - 8}" stroke="#1c2833" stroke-width="2"/><line x1="${W / 2 + 70}" y1="32" x2="${W / 2 + 70}" y2="${ROOF - 8}" stroke="#1c2833" stroke-width="2"/>`;
   for (let f = 0; f < floors; f++) {
     const y = ROOF + (floors - 1 - f) * FH;
     svg += `<text x="4" y="${y + FH / 2 + 4}" font-size="9" fill="#55606e">${f + 1}</text>`;
@@ -2392,30 +2395,54 @@ const STORES = [
   { key: "vapor", name: "Vapor", platform: "desktop", fee: 1500, cut: 0.3, text: "Desktop games. The big summer sale is a bloodbath." },
   { key: "boxstation", name: "Boxstation Live", platform: "console", fee: 2500, cut: 0.3, text: "Console games. Expensive to get on, pays the best." }
 ];
+// The backlist is every game the studio has ever shipped, not just the
+// ones on the Games tab. Each one keeps earning a little forever, never
+// dropping below a floor, so hundreds of forgotten games add up to real
+// wages. Now and then an old one turns into a sleeper hit.
+function ensureBacklist() {
+  const c = company;
+  if (c.backlist) return;
+  c.backlist = c.catalog.slice().reverse().map(g => {
+    const src = g.src || {};
+    return { id: g.id, d: g.day || c.day, p: src.platform || "mobile", o: src.own ? 1 : 0, l: src.tag === "lite" ? 1 : 0, t: (g.file && g.file.themeName) || "an old game" };
+  });
+}
+function addBacklist(order) {
+  ensureBacklist();
+  company.backlist.push({ id: order.id, d: company.day, p: order.platform || "mobile", o: order.own ? 1 : 0, l: order.tag === "lite" ? 1 : 0, t: productTitle(order) || lookFor(order).label });
+}
+function royaltyFor(b, st) {
+  const c = company;
+  const age = Math.max(0, c.day - b.d);
+  let base = b.o ? 45 : 6;
+  if (b.l) base += 14;
+  if (b.p === "console") base *= 1.4;
+  let r = base * Math.max(0.15, 1 - age * 0.05) * (1 - st.cut);
+  if (b.hot && c.day < b.hot) r *= 12;
+  return r;
+}
 function storeNight() {
   const c = company;
-  if (!c.stores) return;
+  ensureBacklist();
+  const pulled = new Set(c.catalog.filter(g => g.pulled).map(g => g.id));
+  if (!c.stores || !Object.values(c.stores).some(Boolean)) { c.lastRoyalty = 0; return; }
+  const live = c.backlist.filter(b => !b.x && !pulled.has(b.id) && STORES.some(st => c.stores[st.key] && st.platform === b.p));
+  const old = live.filter(b => c.day - b.d >= 5 && !(b.hot && c.day < b.hot));
+  if (old.length && Math.random() < Math.min(0.5, old.length * 0.004)) {
+    const lucky = pick(old);
+    lucky.hot = c.day + 3;
+    lucky.hits = (lucky.hits || 0) + 1;
+    notify("Sleeper hit. " + lucky.t + ", a game from day " + lucky.d + " that nobody bought, blew up on a streamer's channel. Its royalties are through the roof for a few nights.", true);
+  }
   let total = 0;
-  c.catalog.forEach(g => {
-    if (g.pulled) return;
-    const src = g.src || {};
-    const plat = src.platform || "mobile";
-    const age = Math.max(0, c.day - (g.day || c.day));
-    const fade = Math.max(0.15, 1 - age * 0.05);
-    STORES.forEach(st => {
-      if (!c.stores[st.key] || st.platform !== plat) return;
-      let base = src.own ? 45 : 6;
-      if (src.tag === "lite") base += 14;
-      if (plat === "console") base *= 1.4;
-      total += base * fade * (1 - st.cut);
-    });
-  });
+  live.forEach(b => STORES.forEach(st => { if (c.stores[st.key] && st.platform === b.p) total += royaltyFor(b, st); }));
   total = Math.round(total);
   c.lastRoyalty = total;
+  c.royaltyTotal = (c.royaltyTotal || 0) + total;
   if (total > 0) {
     c.money += total;
     c.earned = (c.earned || 0) + total;
-    notify("Store sales and microtransactions brought in " + cash(total) + " overnight.");
+    notify("Royalties from " + live.length + " " + plural(live.length, "game") + " on store shelves brought in " + cash(total) + " overnight.");
   }
 }
 
@@ -2434,7 +2461,7 @@ function buildSpec(line, a, b, platform, finish) {
   order.prefix = pick(TITLE_PREFIXES);
   order.suffix = pick(TITLE_SUFFIXES.filter(x => !x.tag)).word;
   order.tag = null;
-  order.customer = "Stackloom Originals";
+  order.customer = "Full Meta Packet Originals";
   order.own = true;
   order.pay = 0;
   order.premium = false;
@@ -2456,7 +2483,7 @@ function renderMashup() {
   const opt = (list, sel, labelOf) => list.map(k => `<option value="${k}" ${k === sel ? "selected" : ""}>${labelOf(k)}</option>`).join("");
   return `<article class="order mash-card"><div class="order-body">
     <div class="customer">Mashup machine</div>
-    <div class="spec">Splice two skins from the same engine into one game and build it on spec under your own label. It pays nothing up front, takes a terminal, and earns through store deals every night, a lot more than customer games do.</div>
+    <div class="spec">Splice two skins from the same engine into one game and build it on spec under the Full Meta Packet Originals label. It pays nothing up front, takes a terminal, and earns through store deals every night, a lot more than customer games do.</div>
     <div class="mash-grid">
       <label>Engine<select data-mash="mashLine">${opt(lines, line, lineName)}</select></label>
       <label>Platform<select data-mash="mashPlat">${opt(Object.keys(PLATFORMS), c.mashPlat || "mobile", k => PLATFORMS[k].label)}</select></label>
@@ -3520,7 +3547,7 @@ function shipOrder(order) {
   if (order.own) {
     pay = 0;
     repChange = 1;
-    message = productTitle(order) + " is out under the Stackloom Originals label. It earns through store deals now.";
+    message = productTitle(order) + " is out under the Full Meta Packet Originals label. It earns royalties through store deals from now on.";
   }
   c.money += pay;
   c.earned = (c.earned || 0) + pay;
@@ -3528,6 +3555,7 @@ function shipOrder(order) {
   c.byLine[order.line || "blocks"] = (c.byLine[order.line || "blocks"] || 0) + 1;
   c.reputation = clamp(c.reputation + repChange, 0, 100);
   c.shipped++;
+  addBacklist(order);
   c.catalog.unshift({
     id: order.id, customer: order.customer, spec: orderSpec(order), day: c.day, premium: !!order.premium,
     bug: !!order.bug, file: withBug(buildThemeFile(order), order.bug),
@@ -4238,10 +4266,11 @@ function renderOffice() {
   }
 
   html += `<h2 class="section-title spaced">Storefront deals</h2>
-    <p class="note">Sign a deal with a store and every game the studio has shipped for that platform sells there and earns a little every night. Games made on spec with the mashup machine earn far more than customer games, free to play games milk microtransactions on top, and every game earns less as it ages. The store keeps its cut. Last night stores paid ${cash(c.lastRoyalty || 0)}.</p>`;
+    <p class="note">Sign a deal with a store and every game the studio has shipped for that platform sells there and earns a little every night. Games made on spec with the mashup machine earn far more than customer games, free to play games milk microtransactions on top, and every game earns less as it ages. The store keeps its cut. Every game you have ever shipped stays on the shelf forever and never earns less than a small floor, so hundreds of old games add up to somebody's wages. Now and then an old flop turns into a sleeper hit and pays big for a few nights.</p>
+    <p class="note">Backlist ${(c.backlist || []).length} ${plural((c.backlist || []).length, "game")}. Last night royalties paid ${cash(c.lastRoyalty || 0)}. Lifetime royalties ${cash(c.royaltyTotal || 0)}.</p>`;
   STORES.forEach(st => {
     const on = (c.stores || {})[st.key];
-    const count = c.catalog.filter(g => !g.pulled && ((g.src || {}).platform || "mobile") === st.platform).length;
+    const count = (c.backlist || []).filter(b => !b.x && b.p === st.platform).length;
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">${st.name}</div><div class="row-state ${on ? "done" : ""}">${on ? "Signed" : cash(st.fee)}</div></div>
