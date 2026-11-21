@@ -190,6 +190,28 @@
   .news.cve .news-tag { color: #d0584f; }
   .prem.patch { background: #d0584f; }
   .prem.repeat { background: #3f9a3a; }
+  .prem.plat { background: #2463b0; }
+  .prem.fin { background: linear-gradient(90deg, #ff2fd6, #2fb4e6, #f2c230); }
+  .prem.mash { background: #8f6ee8; }
+  .prem.lite { background: #e0a33a; }
+  .prem.own { background: #1c2833; }
+  .mash-card { border: 2px solid #8f6ee8; }
+  .mash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+  .mash-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .mash-grid label.wide { grid-column: 1 / -1; }
+  .mash-grid select { font: inherit; font-size: 14px; color: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--edge); background: var(--surface); }
+  .fx { position: fixed; inset: 0; z-index: 22; pointer-events: none; }
+  .fx[hidden] { display: none; }
+  .fx-foil { background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.55) 48%, rgba(200, 230, 255, 0.45) 52%, transparent 65%); background-size: 300% 300%; animation: fxSweep 3s linear infinite; }
+  .fx-holo { background: linear-gradient(120deg, #ff2fd6, #2fb4e6, #29d614, #f2c230, #ff2fd6); background-size: 400% 400%; animation: fxSweep 6s linear infinite; opacity: 0.22; }
+  .fx-rainbow { backdrop-filter: hue-rotate(0deg); -webkit-backdrop-filter: hue-rotate(0deg); animation: fxHue 5s linear infinite; }
+  .fx-glow { backdrop-filter: saturate(1.6) brightness(1.08); -webkit-backdrop-filter: saturate(1.6) brightness(1.08); box-shadow: inset 0 0 80px rgba(47, 180, 230, 0.75); animation: fxPulse 2.4s ease-in-out infinite; }
+  .fx-glitch { background: repeating-linear-gradient(0deg, transparent 0 22px, rgba(255, 47, 214, 0.18) 22px 25px, transparent 25px 47px, rgba(47, 180, 230, 0.18) 47px 49px); animation: fxGlitch 1.6s steps(1) infinite; }
+  .fx-crt { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12) 0 1px, transparent 1px 3px); box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.45); }
+  @keyframes fxSweep { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+  @keyframes fxHue { from { backdrop-filter: hue-rotate(0deg); -webkit-backdrop-filter: hue-rotate(0deg); } to { backdrop-filter: hue-rotate(360deg); -webkit-backdrop-filter: hue-rotate(360deg); } }
+  @keyframes fxPulse { 50% { box-shadow: inset 0 0 40px rgba(47, 180, 230, 0.45); } }
+  @keyframes fxGlitch { 0%, 70%, 100% { transform: none; opacity: 0.5; } 72% { transform: translateX(-6px); opacity: 1; backdrop-filter: hue-rotate(120deg) contrast(1.4); } 76% { transform: translateX(5px) translateY(3px); opacity: 1; } 80% { transform: none; opacity: 0.6; } 90% { transform: translateY(-8px); opacity: 1; backdrop-filter: invert(0.15); } }
   .campaigns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
   .campaigns .btn { min-height: 38px; padding: 6px 12px; font-size: 14px; }
   .hud-office { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -438,6 +460,7 @@
   <main id="view" class="view"></main>
 </div>
 
+<div id="fx" class="fx" hidden></div>
 <div id="toast" class="toast" hidden></div>
 
 <div id="help" class="help" hidden>
@@ -472,6 +495,9 @@
 
     <h2>Perks and house rules</h2>
     <p>The Office tab sells perks that lift everyone's performance every night: cheap soda and snack machines for a stick shop, a coffee bar, a lounge, and daily catering that costs more as the team grows. Hire a manager and you can set house rules: fire anyone who sinks below a line, and give a raise to anyone who stays above a line for enough nights in a row. The lines show up as red and green ticks on every performance meter.</p>
+
+    <h2>Variety, mashups, and stores</h2>
+    <p>Every order comes with a real product title, like Turbo Burrito Jam Remastered or Lil Fang Feud Idle. It also comes in a mobile, desktop, or console version, and some get a finish like foil, holographic, rainbow, glow in the dark, glitch, or retro CRT that shows up on screen when you play it. Lite versions are free to play: they pay half up front and milk microtransactions later. Remasters only show up for games you already shipped, and they build fast. Mashups splice two skins on the same engine, pay more, and break more. The mashup machine on the Games tab builds mashups on spec under your own label, and storefront deals on the Office tab put every game you have shipped on the shelf to earn a little every night.</p>
 
     <h2>Marketing and sales</h2>
     <p>Marketers run ad campaigns that pump one product line for a few days, so you can ride a streamer craze harder or dig out of a rival's release. Salespeople get more money out of every order, keep customers waiting longer, and turn happy customers into repeat clients. Coffee is for closers, so the lobby coffee bar makes sales squeeze harder.</p>
@@ -814,7 +840,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v4.2";
+const VERSION = "stackloom-meta v4.3";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -2250,6 +2276,198 @@ document.getElementById("buildBody").addEventListener("click", e => {
   render();
 });
 
+
+// ------------------------------------------------------------------
+// VARIETY. Every order now gets a real product title, a platform, maybe
+// a finish, and maybe a mashup of two skins on the same engine. None of
+// it touches the engines. It is all data, which is the joke.
+// ------------------------------------------------------------------
+const TITLE_PREFIXES = ["Turbo", "Mega", "Lil", "Super", "Ultra", "Hyper", "Extreme", "Pocket", "Royal", "Neo", "Totally", "Infinite"];
+const TITLE_SUFFIXES = [
+  { word: "Remastered", tag: "remaster" }, { word: "Lite", tag: "lite" }, { word: "Idle", tag: "idle" },
+  { word: "Deluxe" }, { word: "Royale" }, { word: "HD" }, { word: "Go" }, { word: "Plus" }, { word: "Legends" },
+  { word: "Saga" }, { word: "Online" }, { word: "Unleashed" }, { word: "Tycoon" }, { word: "Party" }, { word: "Mania" }
+];
+const PLATFORMS = {
+  mobile: { label: "Mobile", pay: 1, work: 1 },
+  desktop: { label: "Desktop", pay: 1.12, work: 1.1 },
+  console: { label: "Console", pay: 1.35, work: 1.3 }
+};
+const FINISHES = {
+  foil: { label: "Foil", text: "a foil shine sweeping across the screen" },
+  holo: { label: "Holographic", text: "a holographic rainbow sheen" },
+  rainbow: { label: "Rainbow", text: "colors that cycle through the whole rainbow" },
+  glow: { label: "Glow in the dark", text: "everything glowing like it is radioactive" },
+  glitch: { label: "Glitch", text: "a broken digital glitch on purpose" },
+  crt: { label: "Retro CRT", text: "scanlines like an old tube TV" }
+};
+const LINE_THEMES = () => ({
+  blocks: THEMES, doku: DOKU_THEMES, bubble: BUBBLE_THEMES, cards: CARD_THEMES, runner: RUNNER_THEMES,
+  match: MATCH_THEMES, jam: JAM_THEMES, mob: MOB_THEMES, farm: FARM_THEMES, shooter: SHOOT_THEMES
+});
+function themeMapFor(line) { return LINE_THEMES()[line || "blocks"] || THEMES; }
+
+function hasRemasterSource(line, theme) {
+  return company.catalog.some(g => g.src && (g.src.line || "blocks") === (line || "blocks") && g.src.theme === theme);
+}
+
+// Dress up a fresh order: title, platform, finish, mashup partner.
+function decorate(order, line) {
+  const keys = Object.keys(themeMapFor(line));
+  if (Math.random() < 0.55) order.prefix = pick(TITLE_PREFIXES);
+  if (Math.random() < 0.65) {
+    let suf = pick(TITLE_SUFFIXES);
+    if (suf.tag === "remaster" && !hasRemasterSource(line, order.theme)) suf = pick(TITLE_SUFFIXES.filter(x => !x.tag));
+    order.suffix = suf.word;
+    order.tag = suf.tag || null;
+  }
+  const roll = Math.random();
+  order.platform = roll < 0.5 ? "mobile" : roll < 0.75 ? "desktop" : "console";
+  if (Math.random() < 0.3) order.finish = pick(Object.keys(FINISHES));
+  if (keys.length > 1 && Math.random() < 0.18) order.mix = pick(keys.filter(k => k !== order.theme));
+  applyVarietyPricing(order);
+}
+
+function applyVarietyPricing(order) {
+  const p = PLATFORMS[order.platform || "mobile"];
+  let pay = p.pay, work = p.work;
+  if (order.finish) { pay *= 1.2; work *= 1.12; }
+  if (order.mix) { pay *= 1.25; work *= 1.2; }
+  if (order.tag === "lite") pay *= 0.5;
+  if (order.tag === "remaster") work *= 0.6;
+  if (order.tag === "idle") work *= 0.85;
+  order.pay = Math.round(order.pay * pay / 5) * 5;
+  order.work = Math.max(4, Math.round(order.work * work));
+}
+
+function mixLabel(order) {
+  const map = themeMapFor(order.line);
+  const a = map[order.theme], b = order.mix && map[order.mix];
+  return b ? a.label + " x " + b.label : a.label;
+}
+function productTitle(order) {
+  if (!order || !order.theme) return null;
+  return [order.prefix, mixLabel(order), order.suffix].filter(Boolean).join(" ");
+}
+
+// Splice two skin files: every list in the file takes every other entry
+// from the second skin. Colors and boards stay with the first.
+function mergeFiles(a, b) {
+  const out = JSON.parse(JSON.stringify(a));
+  Object.keys(out).forEach(k => {
+    if (Array.isArray(out[k]) && Array.isArray(b[k]) && b[k].length && typeof out[k][0] === "object") {
+      out[k] = out[k].map((x, i) => (i % 2 === 1 && b[k][i % b[k].length]) ? JSON.parse(JSON.stringify(b[k][i % b[k].length])) : x);
+    }
+  });
+  return out;
+}
+
+function varietyTags(item) {
+  const src = item.src || item;
+  let tags = "";
+  if (src.platform) tags += `<span class="prem plat">${PLATFORMS[src.platform].label}</span>`;
+  if (src.finish) tags += `<span class="prem fin">${FINISHES[src.finish].label}</span>`;
+  if (src.mix) tags += `<span class="prem mash">Mashup</span>`;
+  if (src.tag === "lite") tags += `<span class="prem lite">Free to play</span>`;
+  if (src.own) tags += `<span class="prem own">Ours</span>`;
+  return tags;
+}
+
+// Finish effects sit on top of any engine screen as an overlay.
+function setFx(finish) {
+  const fx = document.getElementById("fx");
+  fx.className = finish ? "fx fx-" + finish : "fx";
+  fx.hidden = !finish;
+}
+
+// ------------------------------------------------------------------
+// Storefronts. Sign a deal with a store and every game the studio has
+// shipped for that platform earns a trickle every night. Games the
+// studio made on its own earn a lot more, free to play ones milk
+// microtransactions, and every game earns less as it ages.
+// ------------------------------------------------------------------
+const STORES = [
+  { key: "fruit", name: "Fruit App Store", platform: "mobile", fee: 800, cut: 0.3, text: "Mobile games. Strict reviewers, huge audience." },
+  { key: "robot", name: "Robot Market", platform: "mobile", fee: 600, cut: 0.25, text: "Mobile games. Takes anything, pays a little less attention." },
+  { key: "vapor", name: "Vapor", platform: "desktop", fee: 1500, cut: 0.3, text: "Desktop games. The big summer sale is a bloodbath." },
+  { key: "boxstation", name: "Boxstation Live", platform: "console", fee: 2500, cut: 0.3, text: "Console games. Expensive to get on, pays the best." }
+];
+function storeNight() {
+  const c = company;
+  if (!c.stores) return;
+  let total = 0;
+  c.catalog.forEach(g => {
+    if (g.pulled) return;
+    const src = g.src || {};
+    const plat = src.platform || "mobile";
+    const age = Math.max(0, c.day - (g.day || c.day));
+    const fade = Math.max(0.15, 1 - age * 0.05);
+    STORES.forEach(st => {
+      if (!c.stores[st.key] || st.platform !== plat) return;
+      let base = src.own ? 45 : 6;
+      if (src.tag === "lite") base += 14;
+      if (plat === "console") base *= 1.4;
+      total += base * fade * (1 - st.cut);
+    });
+  });
+  total = Math.round(total);
+  c.lastRoyalty = total;
+  if (total > 0) {
+    c.money += total;
+    c.earned = (c.earned || 0) + total;
+    notify("Store sales and microtransactions brought in " + cash(total) + " overnight.");
+  }
+}
+
+// The mashup machine: splice any two skins on one engine and build it
+// on spec under the studio's own label. Nobody ordered it. It only earns
+// through store deals.
+function specLines() { return openLineKeys(); }
+function buildSpec(line, a, b, platform, finish) {
+  const c = company;
+  if (!a || !b) return;
+  const order = makeOffer(line);
+  order.theme = a;
+  order.mix = a !== b ? b : null;
+  order.platform = platform;
+  order.finish = finish || null;
+  order.prefix = pick(TITLE_PREFIXES);
+  order.suffix = pick(TITLE_SUFFIXES.filter(x => !x.tag)).word;
+  order.tag = null;
+  order.customer = "Stackloom Originals";
+  order.own = true;
+  order.pay = 0;
+  order.premium = false;
+  order.status = "queued";
+  order.deadline = c.time + DAY_SECONDS * 30;
+  order.expiresAt = c.time + DAY_SECONDS * 30;
+  c.orders.push(order);
+  notify("The mashup machine queued " + productTitle(order) + " on spec. It goes to whatever stores you have deals with.", true);
+}
+
+function renderMashup() {
+  const c = company;
+  const lines = specLines();
+  const line = c.mashLine && lines.includes(c.mashLine) ? c.mashLine : lines[0];
+  const keys = Object.keys(themeMapFor(line));
+  const map = themeMapFor(line);
+  const a = keys.includes(c.mashA) ? c.mashA : keys[0];
+  const b = keys.includes(c.mashB) ? c.mashB : keys[Math.min(1, keys.length - 1)];
+  const opt = (list, sel, labelOf) => list.map(k => `<option value="${k}" ${k === sel ? "selected" : ""}>${labelOf(k)}</option>`).join("");
+  return `<article class="order mash-card"><div class="order-body">
+    <div class="customer">Mashup machine</div>
+    <div class="spec">Splice two skins from the same engine into one game and build it on spec under your own label. It pays nothing up front, takes a terminal, and earns through store deals every night, a lot more than customer games do.</div>
+    <div class="mash-grid">
+      <label>Engine<select data-mash="mashLine">${opt(lines, line, lineName)}</select></label>
+      <label>Platform<select data-mash="mashPlat">${opt(Object.keys(PLATFORMS), c.mashPlat || "mobile", k => PLATFORMS[k].label)}</select></label>
+      <label>First skin<select data-mash="mashA">${opt(keys, a, k => map[k].label)}</select></label>
+      <label>Second skin<select data-mash="mashB">${opt(keys, b, k => map[k].label)}</select></label>
+      <label class="wide">Finish<select data-mash="mashFin"><option value="">None</option>${opt(Object.keys(FINISHES), c.mashFin, k => FINISHES[k].label)}</select></label>
+    </div>
+    <div class="actions"><button class="btn primary" data-do="mashBuild" data-id="${line}|${a}|${b}">Build it on spec</button></div>
+  </div></article>`;
+}
+
 // ------------------------------------------------------------------
 // Bankruptcy. End a day below zero and the clock starts. End too many
 // days in a row below zero and the studio folds.
@@ -2642,6 +2860,13 @@ function bugSlots(order) {
 }
 
 function orderSpec(order) {
+  const base = baseSpec(order);
+  const title = productTitle(order);
+  const extra = [order.platform ? PLATFORMS[order.platform].label.toLowerCase() + " version" : "", order.finish ? FINISHES[order.finish].label.toLowerCase() + " finish" : "", order.mix ? "mashup" : ""].filter(Boolean).join(", ");
+  return (title ? title + ". " : "") + base + (extra ? ", " + extra : "");
+}
+
+function baseSpec(order) {
   const prem = order.premium ? ", premium art" : "";
   if (isDoku(order)) return lookFor(order).label + ", " + DOKU_LEVELS[order.level].label + prem;
   if (isBubble(order)) {
@@ -2821,6 +3046,16 @@ function buildFarmFile(customer, themeKey, sizeKey, rotKey, premium) {
 }
 
 function buildThemeFile(order) {
+  let file = buildBaseFile(order);
+  if (order.mix && themeMapFor(order.line)[order.mix]) file = mergeFiles(file, buildBaseFile(Object.assign({}, order, { theme: order.mix })));
+  const title = productTitle(order);
+  if (title) file.themeName = title;
+  if (order.finish) file.finish = order.finish;
+  if (order.platform) file.platform = order.platform;
+  return file;
+}
+
+function buildBaseFile(order) {
   if (isShooter(order)) return buildShooterFile(order.customer, order.theme, order.pace, order.bombs, order.premium);
   if (isMob(order)) return buildMobFile(order.customer, order.theme, order.energy, order.length, order.premium);
   if (isFarm(order)) return buildFarmFile(order.customer, order.theme, order.size, order.rot, order.premium);
@@ -3051,6 +3286,7 @@ function makeOffer(forcedLine) {
     order.work += PREMIUM.work;
     order.pay = Math.round(order.pay * PREMIUM.payBoost / 5) * 5;
   }
+  decorate(order, line);
   const market = eventMod("pay", line) * (order.premium ? eventPremium() : 1) * salesPayMult();
   if (market !== 1) order.pay = Math.round(order.pay * market / 5) * 5;
   order.expiresAt += salesTeam().length * 12;
@@ -3252,7 +3488,7 @@ function finishBuild(order, i) {
   order.readyAt = company.time;
   if (order.patch) { dirty = true; return; }
 
-  if (Math.random() < bugChance(i)) {
+  if (Math.random() < bugChance(i) * (order.mix ? 1.3 : 1)) {
     order.bug = { pieceIndex: Math.floor(Math.random() * bugSlots(order)) };
     if (company.upgrades.tests && Math.random() < 0.7) {
       order.bug = null;
@@ -3281,6 +3517,11 @@ function shipOrder(order) {
     message = order.customer + " got their " + label + " game late and paid " + cash(pay) + " instead of " + cash(order.pay) + ".";
   }
 
+  if (order.own) {
+    pay = 0;
+    repChange = 1;
+    message = productTitle(order) + " is out under the Stackloom Originals label. It earns through store deals now.";
+  }
   c.money += pay;
   c.earned = (c.earned || 0) + pay;
   if (!c.byLine) c.byLine = {};
@@ -3295,7 +3536,7 @@ function shipOrder(order) {
   if (c.catalog.length > 30) c.catalog.length = 30;
   order.status = "shipped";
   notify(message, (!isManaged(order.builtBy) && !order.qa) || !!order.bug);
-  if (!order.bug && salesTeam().length && Math.random() < repeatChance()) {
+  if (!order.own && !order.bug && salesTeam().length && Math.random() < repeatChance()) {
     const again = makeOffer(order.line || "blocks");
     again.customer = order.customer;
     again.repeat = true;
@@ -3385,6 +3626,7 @@ function payBills() {
   drift();
   runManagerRules();
   rivalNight();
+  storeNight();
   c.heat = Math.max(0, (c.heat || 0) - 5);
   runLawyers();
   checkDebt();
@@ -3488,7 +3730,7 @@ function motifLine(order) {
   return motifs.length ? `<div class="motifs">${motifs.join(" ")}</div>` : "";
 }
 
-function premTag(item) { return (item.premium ? `<span class="prem">Premium</span>` : "") + (item.patch ? `<span class="prem patch">Patch</span>` : "") + (item.repeat ? `<span class="prem repeat">Repeat</span>` : ""); }
+function premTag(item) { return varietyTags(item) + (item.premium ? `<span class="prem">Premium</span>` : "") + (item.patch ? `<span class="prem patch">Patch</span>` : "") + (item.repeat ? `<span class="prem repeat">Repeat</span>` : ""); }
 
 function renderOrders() {
   const offers = company.orders.filter(o => o.status === "offer");
@@ -3995,6 +4237,19 @@ function renderOffice() {
     html += `<p class="empty">This is the biggest office there is.</p>`;
   }
 
+  html += `<h2 class="section-title spaced">Storefront deals</h2>
+    <p class="note">Sign a deal with a store and every game the studio has shipped for that platform sells there and earns a little every night. Games made on spec with the mashup machine earn far more than customer games, free to play games milk microtransactions on top, and every game earns less as it ages. The store keeps its cut. Last night stores paid ${cash(c.lastRoyalty || 0)}.</p>`;
+  STORES.forEach(st => {
+    const on = (c.stores || {})[st.key];
+    const count = c.catalog.filter(g => !g.pulled && ((g.src || {}).platform || "mobile") === st.platform).length;
+    html += `
+      <div class="row">
+        <div class="row-top"><div class="row-name">${st.name}</div><div class="row-state ${on ? "done" : ""}">${on ? "Signed" : cash(st.fee)}</div></div>
+        <div class="row-sub">${st.text} Takes a ${Math.round(st.cut * 100)} percent cut. You have ${count} ${PLATFORMS[st.platform].label.toLowerCase()} ${plural(count, "game")} it could sell.</div>
+        <div class="actions">${on ? `<button class="btn" data-do="storeOff" data-id="${st.key}">Pull out</button>` : `<button class="btn primary" data-do="store" data-id="${st.key}">Sign the deal for ${cash(st.fee)}</button>`}</div>
+      </div>`;
+  });
+
   html += `<h2 class="section-title spaced">Perks</h2>
     <p class="note">Perks push everyone's performance up a little every night, on top of whatever else is going on. Vending machines are cheap enough for a stick shop. Catering is a carrot shop move and costs more as the team grows. Cancel any perk to stop paying for it. Perks are costing ${cash(perkBills())} a day.</p>`;
   PERKS.forEach(k => {
@@ -4036,6 +4291,7 @@ function renderOffice() {
 
 function renderGames() {
   let html = `<p class="note">Every block game runs on the block engine, every doku on the doku engine, every bubble shooter on the bubble engine, every deck on the deck engine, every gate runner on the runner engine, every match three on the match engine, every pull out puzzle on the jam engine, every energy and jobs game on the mob engine, every crop timer on the farm engine, and every vertical shooter on the shooter engine. The only difference between products on the same engine is the theme file. Premium products are the same file with one flag flipped and a bigger invoice. Tap View file to see one.</p>`;
+  html += renderMashup();
   html += renderHackCard();
   [HOUSE_GAME, HOUSE_DOKU, HOUSE_BUBBLE, HOUSE_DECK, HOUSE_POKER, HOUSE_RUNNER, HOUSE_MATCH, HOUSE_JAM, HOUSE_MOB, HOUSE_FARM, HOUSE_SHOOTER, ...company.catalog].forEach(game => {
     html += `
@@ -4058,6 +4314,7 @@ function renderGames() {
 const RENDERERS = { orders: renderOrders, tower: renderTowerTab, terminals: renderTerminals, team: renderTeam, office: renderOffice, games: renderGames };
 
 function render() {
+  if (!(playOpen || dokuOpen || bubOpen || cardsOpen || runOpen || matOpen || jamOpen || mobOpen || frmOpen || shOpen)) setFx(null);
   ensureTower();
   ensureRivals();
   const scroll = view.scrollTop;
@@ -4249,6 +4506,23 @@ function doAction(action, id) {
       }
       break;
     }
+    case "mashBuild": {
+      const [ln, a, b] = String(id).split("|");
+      buildSpec(ln, a, b, c.mashPlat || "mobile", c.mashFin || null);
+      break;
+    }
+    case "store": {
+      const st = STORES.find(x => x.key === id);
+      if (st && !(c.stores || {})[st.key] && spend(st.fee)) {
+        if (!c.stores) c.stores = {};
+        c.stores[st.key] = true;
+        notify("Signed a distribution deal with " + st.name + ". Every " + st.platform + " game the studio has shipped is on the shelf there now.", true);
+      }
+      break;
+    }
+    case "storeOff":
+      if (c.stores && c.stores[id]) { c.stores[id] = false; notify("Pulled out of " + STORES.find(x => x.key === id).name + ".", true); }
+      break;
     case "raise":
       giveRaise(id);
       break;
@@ -4369,7 +4643,11 @@ view.addEventListener("input", event => {
   const v = Number(el.value);
   if (label) label.textContent = el.dataset.set === "raiseDays" ? v : (v || "off");
 });
-view.addEventListener("change", () => { dirty = true; });
+view.addEventListener("change", event => {
+  const sel = event.target.closest("[data-mash]");
+  if (sel) company[sel.dataset.mash] = sel.value;
+  dirty = true;
+});
 
 view.addEventListener("click", event => {
   const button = event.target.closest("[data-do]");
@@ -4771,6 +5049,7 @@ function resizeBoard() {
 }
 
 function openPlay(file, context) {
+  setFx(file.finish || null);
   if (file.product === "doku") openDoku(file, context);
   else if (file.product === "bubble") openBubble(file, context);
   else if (file.product === "cards") openCards(file, context);

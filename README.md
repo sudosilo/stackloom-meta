@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.14. Tap any pod on the floor plan to hire into it or build more room for it.
+Latest change. 2026-11-20, v2026.11.20.15. Added product titles, platforms, finishes, mashups, the mashup machine, and storefront deals.
 
 Full history is in CHANGELOG.md.
