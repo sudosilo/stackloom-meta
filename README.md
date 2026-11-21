@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.18. Devs can be pointed at one engine to build in house games full time.
+Latest change. 2026-11-20, v2026.11.20.19. Added staff comment Easter eggs to about one game file in five.
 
 Full history is in CHANGELOG.md.

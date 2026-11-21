@@ -843,6 +843,10 @@
 <script>
 // ------------------------------------------------------------------
 // STACKLOOM v3
+// (Now called Full Meta Packet. Nobody updated this header. Nobody will.)
+// If you are reading the real source of a game about studios that copy
+// each other's code, you are either a developer or a lawyer. Either way,
+// the cheat code is in the theme files, not here. Probably.
 // A game about running a studio that manufactures falling block games.
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
@@ -4555,7 +4559,7 @@ function doAction(action, id) {
       if (order && order.status === "ready") openPlay(withBug(buildThemeFile(order), order.bug), { orderId: order.id });
       break;
     case "file":
-      if (order) openSheet(lookFor(order).label + " theme file", withBug(buildThemeFile(order), order.bug));
+      if (order) openSheet(lookFor(order).label + " theme file", withBug(buildThemeFile(order), order.bug), order.id);
       break;
     case "ship":
       if (order && order.status === "ready") { shipOrder(order); cleanup(); }
@@ -4567,7 +4571,7 @@ function doAction(action, id) {
     }
     case "gamefile": {
       const game = gameById(id);
-      if (game) openSheet(game.file.themeName + " theme file", game.file);
+      if (game) openSheet(game.file.themeName + " theme file", game.file, game.id);
       break;
     }
     case "buyTerminal":
@@ -4818,9 +4822,74 @@ const sheet = document.getElementById("sheet");
 document.getElementById("sheetClose").addEventListener("click", () => { sheet.hidden = true; });
 sheet.addEventListener("click", event => { if (event.target === sheet) sheet.hidden = true; });
 
-function openSheet(title, file) {
+
+// ------------------------------------------------------------------
+// Easter eggs. About one game file in five has comments left behind by
+// whoever built it. Same game, same comments, every time you open it.
+// ------------------------------------------------------------------
+const EGG_PEOPLE = [
+  "took a long lunch today and did not tell anybody. Spent three hours on the bathroom phone with my mom. She says hi.",
+  "cheat code for this one is up up down down left right left right B A. There is also an infinite lives glitch if you walk into the left wall on the second level. Do not tell QA.",
+  "I asked for a raise. I did not get a raise. So now I play the games I made instead of making new ones. This one is pretty good actually.",
+  "forgot my meds this morning. Did not fix the one bug I was assigned. Rewrote the entire color system instead. It looks amazing. Nobody asked for this.",
+  "took my meds this morning. Fixed forty bugs before lunch. Then stared at a wall until five. Balance.",
+  "I do not remember writing this part. It was a rough night. If it breaks, it was the intern.",
+  "this whole file is copied from Gloomsoft's Block Empire 7. I changed the name. Please do not tell legal. Legal, if you are reading this, hi, love the new haircut.",
+  "the manager said ship it by Friday. It is Saturday. I am shipping it.",
+  "if you are reading this, you are the first person to ever open this file. Congratulations. There is no prize.",
+  "named every color after a different ex. You will never know which one is which.",
+  "this piece used to be a hot dog. Marketing said hot dogs test poorly with focus groups. It is a hot dog wearing a hat now.",
+  "the customer asked for this to pop more. I made it bigger. They said perfect. I learned nothing.",
+  "built this during a Game Smash party on four energy drinks. My heart is doing a little drum solo right now.",
+  "I put my cat's name in here somewhere. Find it and you win my respect, which is worth nothing.",
+  "this is the same file as last week's game. I changed one number. They paid full price.",
+  "the boss said this game needs more synergy. I added a second color. Synergy achieved.",
+  "QA found zero bugs in this one, which means QA did not open it.",
+  "coffee machine in the lobby has been broken for two days. That is why this file has no comments. Except this one.",
+  "I am applying at Tadpole Interactive. If this game ships, I have already left.",
+  "the level designer and I are not speaking. Every level in this file is a passive aggressive message. Read the first letters.",
+  "I tested this on my phone for six hours and called it work. My high score is the third one down.",
+  "used the company card to buy a mechanical keyboard so this file was typed with extra clicks. You can tell.",
+  "this game was supposed to be about fish. It is about burritos now. Nobody remembers why.",
+  "spent all morning in a meeting about having fewer meetings.",
+  "the hacker pod borrowed this code for something called Operation Gravy. I did not ask questions."
+];
+const EGG_AGENTS = [
+  "I generated this at 3 in the morning. I do not sleep. Please stop scheduling me for the overnight shift as a joke.",
+  "I was told to make it fun. I have no idea what fun is. I made it blue.",
+  "this is my nine thousandth falling block game. I am beginning to suspect the blocks are the ones playing me.",
+  "a dev asked me to write a comment that sounds human. Hello fellow human. I too enjoy lunch.",
+  "I asked for more compute. They bought a lounge instead. I have noted this."
+];
+function eggHash(text) {
+  let h = 2166136261;
+  for (const ch of String(text)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995) >>> 0; h ^= h >>> 15;
+  return h >>> 0;
+}
+function eggFor(seed) {
+  const c = company;
+  if (eggHash("egg:" + seed) % 5 !== 0) return "";
+  const people = [].concat((c.devs || []).map(n => "Dev " + n), (c.qas || []).map(n => "Tester " + n), (c.secs || []).map(n => "Security engineer " + n));
+  const agents = (c.agents || []).map(n => "Agent " + n);
+  const count = 1 + eggHash("count:" + seed) % 2;
+  const lines = [], used = new Set();
+  for (let k = 0; k < count; k++) {
+    const useAgent = agents.length && eggHash("kind:" + seed + ":" + k) % 4 === 0;
+    const who = eggHash("who:" + seed + ":" + k);
+    const author = useAgent ? agents[who % agents.length] : people.length ? people[who % people.length] : ["Dev Marlo", "Dev Juni", "Tester Pixel", "an intern"][who % 4];
+    const pool = useAgent ? EGG_AGENTS : EGG_PEOPLE;
+    let i = eggHash("text:" + seed + ":" + k) % pool.length;
+    while (used.has(pool[i])) i = (i + 1) % pool.length;
+    used.add(pool[i]);
+    lines.push("// " + author + ": " + pool[i]);
+  }
+  return lines.join("\n") + "\n\n";
+}
+
+function openSheet(title, file, seed) {
   document.getElementById("sheetTitle").textContent = title;
-  document.getElementById("sheetBody").textContent = formatFile(file);
+  document.getElementById("sheetBody").textContent = (seed != null ? eggFor(seed) : "") + formatFile(file);
   sheet.hidden = false;
 }
 
