@@ -814,7 +814,7 @@
 // Every game the studio sells is the same engine plus a different theme
 // file. The data blocks at the top are the whole catalog of parts.
 // ------------------------------------------------------------------
-const VERSION = "stackloom-meta v4.0";
+const VERSION = "stackloom-meta v4.1";
 
 // Rules shared by every game the studio makes. This is the engine.
 const ENGINE = {
@@ -2018,11 +2018,33 @@ function renderTower() {
   ensureTower();
   const c = company;
   const floors = towerFloors(), built = TOWER_FLOORS[c.officeLevel];
-  const SW = 52, FH = 58, X0 = 14, ROOF = 46;
-  const W = X0 * 2 + SW * TOWER_SLOTS, H = ROOF + floors * FH + 14;
+  const SW = 52, FH = 58, X0 = 14, ROOF = 46, EW = 30;
+  const EX = X0 + SW * TOWER_SLOTS + 4;
+  const W = X0 * 2 + SW * TOWER_SLOTS + EW + 4, H = ROOF + floors * FH + 14;
   const filled = {};
   let svg = `<rect x="0" y="0" width="${W}" height="${H}" fill="#e6f3ff"/>`;
-  svg += `<rect x="${X0 - 4}" y="${ROOF - 8}" width="${SW * TOWER_SLOTS + 8}" height="${floors * FH + 8}" fill="#9aa9b8" stroke="#1c2833" stroke-width="2"/>`;
+  svg += `<rect x="${X0 - 4}" y="${ROOF - 8}" width="${SW * TOWER_SLOTS + EW + 12}" height="${floors * FH + 8}" fill="#9aa9b8" stroke="#1c2833" stroke-width="2"/>`;
+  // Elevator shaft on the right side, with doors on every floor and a car
+  // that rides up and down stopping at each one.
+  svg += `<rect x="${EX}" y="${ROOF - 4}" width="${EW}" height="${floors * FH}" fill="#3a3f47"/>`;
+  svg += `<line x1="${EX + EW / 2}" y1="${ROOF - 4}" x2="${EX + EW / 2}" y2="${ROOF + floors * FH}" stroke="#7d8b99" stroke-width="1"/>`;
+  svg += `<rect x="${EX + 4}" y="${ROOF - 14}" width="${EW - 8}" height="8" rx="2" fill="#55606e" stroke="#1c2833"/><circle cx="${EX + EW / 2}" cy="${ROOF - 10}" r="2.5" fill="#2fb4e6"/>`;
+  for (let f = 0; f < floors; f++) {
+    const fy = ROOF + (floors - 1 - f) * FH;
+    svg += `<rect x="${EX + 3}" y="${fy + 14}" width="${EW - 6}" height="${FH - 20}" fill="none" stroke="#7d8b99" stroke-dasharray="2 2"/>`;
+  }
+  const carY = f => ROOF + (floors - 1 - f) * FH + 14;
+  const stops = [];
+  for (let f = 0; f < floors; f++) stops.push(f);
+  for (let f = floors - 2; f > 0; f--) stops.push(f);
+  const vals = [];
+  stops.forEach(f => { vals.push(carY(f)); vals.push(carY(f)); });
+  vals.push(carY(stops[0]));
+  const dur = Math.max(4, stops.length * 2.2);
+  const anim = floors > 1 ? `<animate attributeName="y" values="${vals.join(";")}" dur="${dur}s" repeatCount="indefinite"/>` : "";
+  const riders = headcount() ? `<svg x="${EX + 3}" y="${carY(0)}" width="${EW - 6}" height="${FH - 20}" overflow="visible">${anim}<circle cx="${(EW - 6) / 2}" cy="${(FH - 20) / 2 - 2}" r="4" fill="#f1c9a5" stroke="#1c2833" stroke-width="0.8"/><rect x="${(EW - 6) / 2 - 4}" y="${(FH - 20) / 2 + 2}" width="8" height="10" rx="2" fill="#2463b0"/></svg>` : "";
+  svg += `<g><rect x="${EX + 3}" y="${carY(0)}" width="${EW - 6}" height="${FH - 20}" rx="2" fill="#f6d98a" stroke="#1c2833" stroke-width="1.5">${anim}</rect>${riders}</g>`;
+  svg += `<line x1="${EX + EW / 2}" y1="${ROOF - 6}" x2="${EX + EW / 2}" y2="${carY(0)}" stroke="#1c2833" stroke-width="1.2">${floors > 1 ? `<animate attributeName="y2" values="${vals.join(";")}" dur="${dur}s" repeatCount="indefinite"/>` : ""}</line>`;
   svg += `<rect x="${W / 2 - 70}" y="8" width="140" height="24" rx="4" fill="#2463b0" stroke="#1c2833" stroke-width="2"/><text x="${W / 2}" y="25" font-size="13" font-weight="800" text-anchor="middle" fill="#ffffff" letter-spacing="2">STACKLOOM</text>`;
   svg += `<line x1="${W / 2 - 50}" y1="32" x2="${W / 2 - 50}" y2="${ROOF - 8}" stroke="#1c2833" stroke-width="2"/><line x1="${W / 2 + 50}" y1="32" x2="${W / 2 + 50}" y2="${ROOF - 8}" stroke="#1c2833" stroke-width="2"/>`;
   for (let f = 0; f < floors; f++) {
@@ -2034,7 +2056,7 @@ function renderTower() {
       if (f < built) svg += `<g data-do="buildAt" data-id="${f}:${s}"><rect x="${x + 2}" y="${y + 2}" width="${SW - 4}" height="${FH - 6}" fill="#f3f6f9" stroke="#9aa9b8" stroke-dasharray="4 3"/><text x="${x + SW / 2}" y="${y + FH / 2 + 4}" font-size="16" font-weight="700" text-anchor="middle" fill="#2463b0">+</text></g>`;
       else svg += `<rect x="${x + 2}" y="${y + 2}" width="${SW - 4}" height="${FH - 6}" fill="url(#hatch)"/>`;
     }
-    svg += `<rect x="${X0 - 4}" y="${y + FH - 4}" width="${SW * TOWER_SLOTS + 8}" height="4" fill="#55606e"/>`;
+    svg += `<rect x="${X0 - 4}" y="${y + FH - 4}" width="${SW * TOWER_SLOTS + EW + 12}" height="4" fill="#55606e"/>`;
   }
   towerRooms().slice().sort((a, b) => a.floor - b.floor || a.slot - b.slot).forEach(r => {
     const t = roomType(r.type);

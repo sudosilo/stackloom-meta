@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.12. The studio is now a stacker style tower with rooms you place, plus a competition skyline, market share pie, and rival stats.
+Latest change. 2026-11-20, v2026.11.20.13. Added an elevator to the tower.
 
 Full history is in CHANGELOG.md.
