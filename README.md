@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.21. Added resume hiring, the HR department, and the reverse engineering lab.
+Latest change. 2026-11-20, v2026.11.20.22. Added Retire and Sell the studio, and high score submission to the shared Score Hub board.
 
 Full history is in CHANGELOG.md.

@@ -228,6 +228,8 @@
   .runs { list-style: none; margin: 8px 0 14px; }
   .runs li { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; padding: 8px 2px; border-bottom: 1px solid var(--edge); font-variant-numeric: tabular-nums; }
   .runs li.mine { color: #2463b0; font-weight: 650; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; font-size: 14px; color: #55606e; }
+  .field input { font: inherit; font-size: 17px; padding: 10px 12px; border: 1px solid #b8c2cc; border-radius: 10px; color: #1c2833; background: #ffffff; }
 
   /* Theme file viewer */
   .sheet { position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; background: rgba(28, 40, 51, 0.25); }
@@ -534,6 +536,8 @@
     <h2>Lawyers</h2>
     <p>Lawyers shrink every fine, soften the hit when you get caught, and cool off heat faster. When nothing is on fire, they send cease and desist letters to rivals over their lookalike games, and sometimes a settlement check comes back.</p>
 
+    <h2>How it ends</h2>
+    <p>Whenever you've had enough, go to the Office tab and either retire or sell the studio. Retiring scores your cash plus a year of royalties, which rewards a big backlist. Selling scores what a buyer pays for the whole operation, which rewards a big tower and a big staff. Then put your three letter tag on the shared high score board.</p>
     <h2>How you lose</h2>
     <p>End a day below zero and the top bar turns red. End too many days in a row below zero and the studio folds. Your run score counts revenue, games shipped, and reputation, minus the buggy games you pushed out the door, and your best runs are saved on the Office tab.</p>
   </div>
@@ -549,10 +553,17 @@
 
 <div id="fold" class="fold" hidden>
   <div class="fold-card">
-    <h1>The studio folded</h1>
+    <h1 id="foldTitle">The studio folded</h1>
     <p id="foldText" class="note" style="margin-top:6px"></p>
     <div id="foldScore" class="fold-score"></div>
-    <h2 class="section-title spaced">Best runs</h2>
+    <h2 class="section-title spaced">Put it on the high score board</h2>
+    <label class="field">Your tag, up to three letters or numbers<input id="foldTag" maxlength="3" autocomplete="off" autocapitalize="characters"></label>
+    <label class="field">A link to show next to it, if you want one<input id="foldLink" maxlength="60" autocomplete="off" inputmode="url"></label>
+    <button id="foldSubmit" class="btn primary wide">Submit my score</button>
+    <p id="foldMsg" class="note" style="margin-top:8px"></p>
+    <h2 class="section-title spaced">High score board</h2>
+    <ul id="foldBoard" class="runs"></ul>
+    <h2 class="section-title spaced">Your best runs on this phone</h2>
     <ul id="foldRuns" class="runs"></ul>
     <button id="foldNew" class="btn primary wide">Start a new studio</button>
   </div>
@@ -850,6 +861,7 @@
     <button id="cardToolB" class="btn primary">Collect</button>
   </div>
 </div>
+<script src="https://2026-10-30-orange-scores.vercel.app/sdk.js" defer onload="window.onScoresReady && window.onScoresReady()"></script>
 <script>
 // ------------------------------------------------------------------
 // STACKLOOM v3
@@ -2687,9 +2699,9 @@ function saveRun(run) {
 }
 function renderRuns(mine) {
   const runs = loadRuns();
-  if (!runs.length) return `<p class="note">No finished runs yet. A run ends when the studio folds.</p>`;
+  if (!runs.length) return `<p class="note">No finished runs yet. A run ends when you retire, sell the studio, or go broke.</p>`;
   return `<ul class="runs">` + runs.map(r =>
-    `<li class="${mine && r.stamp === mine ? "mine" : ""}"><span>Day ${r.day}, ${r.shipped} shipped, ${r.lines} ${plural(r.lines, "line")}</span><span>${r.score.toLocaleString("en-US")}</span></li>`
+    `<li class="${mine && r.stamp === mine ? "mine" : ""}"><span>${r.how === "sell" ? "Sold" : r.how === "retire" ? "Retired" : "Folded"} day ${r.day}, ${r.shipped} shipped, ${r.lines} ${plural(r.lines, "line")}</span><span>${r.score.toLocaleString("en-US")}</span></li>`
   ).join("") + `</ul>`;
 }
 
@@ -2714,10 +2726,93 @@ function foldStudio() {
   showFold(run.stamp);
 }
 
+
+// ------------------------------------------------------------------
+// Cashing out. Retire and keep the backlist, or sell the whole studio.
+// Either way the run ends, the score is saved here, and it can go up on
+// the shared high score board with a three letter tag.
+// ------------------------------------------------------------------
+const SCORE_GAME = "full-meta-packet";
+const SCORE_HUB = "https://2026-10-30-orange-scores.vercel.app";
+const TAG_KEY = "full-meta-packet-tag";
+let exitArmed = { kind: null, until: 0 };
+function retireBonus(c) { return Math.max(0, Math.round(c.money)) + Math.round((c.lastRoyalty || 0) * 365); }
+function saleBonus(c) {
+  const building = OFFICES.slice(0, c.officeLevel + 1).reduce((n, o) => n + o.cost, 0);
+  const rooms = towerRooms().reduce((n, r) => n + (roomType(r.type) ? roomType(r.type).cost : 0), 0);
+  const value = (building * 0.6 + rooms * 0.5 + headcount() * 1500 + (c.backlist || []).length * 300 + (c.lastRoyalty || 0) * 120) * (0.5 + c.reputation / 100);
+  return Math.max(0, Math.round(c.money)) + Math.round(value);
+}
+function endRun(kind) {
+  const c = company;
+  if (c.over) return;
+  const bonus = kind === "sell" ? saleBonus(c) : retireBonus(c);
+  c.over = true;
+  c.endKind = kind;
+  const score = runScore(c) + bonus;
+  const run = { score: score, day: c.day, shipped: c.shipped, lines: linesOpenCount(), earned: c.earned || 0, stamp: Date.now(), how: kind };
+  saveRun(run);
+  c.lastRun = run.stamp;
+  c.lastScore = score;
+  c.endBonus = bonus;
+  c.submitted = false;
+  notify(kind === "sell" ? "Sold the studio on day " + c.day + " for " + cash(bonus) + "." : "Retired on day " + c.day + " with " + cash(bonus) + " in cash and a year of royalties.");
+  saveCompany();
+  showFold(run.stamp);
+}
+function scoreDuration(c) { return clamp(Math.round((c.time || 0) * 1000), 1000, 400 * 24 * 3600 * 1000 - 1); }
+function renderBoard(list, mineTag, mineScore) {
+  if (!list || !list.length) return `<li><span>Nobody is on the board yet.</span><span></span></li>`;
+  return list.map((e, i) => `<li class="${e.tag === mineTag && Number(e.score) === mineScore ? "mine" : ""}"><span>${i + 1}. ${String(e.tag).replace(/[<>&]/g, "")}${e.domain ? " " + String(e.domain).replace(/[<>&]/g, "") : ""}</span><span>${Number(e.score).toLocaleString("en-US")}</span></li>`).join("");
+}
+function loadBoard(target, mineTag, mineScore) {
+  const el = document.getElementById(target);
+  if (!el) return;
+  if (!window.Scores) { el.innerHTML = `<li><span>The high score board can't be reached right now.</span><span></span></li>`; return; }
+  el.innerHTML = `<li><span>Loading the board.</span><span></span></li>`;
+  Scores.board(SCORE_GAME, 10).then(r => {
+    el.innerHTML = r && r.ok ? renderBoard(r.entries || r.board || r.top || [], mineTag, mineScore) : `<li><span>The high score board can't be reached right now.</span><span></span></li>`;
+  });
+}
+function submitScore() {
+  const c = company;
+  const tagEl = document.getElementById("foldTag"), linkEl = document.getElementById("foldLink"), msg = document.getElementById("foldMsg");
+  if (!window.Scores) { msg.textContent = "The high score board can't be reached right now. Your score is still saved on this phone."; return; }
+  if (c.submitted) { msg.textContent = "This run is already on the board."; return; }
+  const tag = Scores.cleanTag(tagEl.value);
+  if (!tag.trim()) { msg.textContent = "Type a tag first, up to three letters or numbers."; return; }
+  try { localStorage.setItem(TAG_KEY, tagEl.value); } catch (error) { /* storage unavailable */ }
+  msg.textContent = "Sending.";
+  Scores.submit({ game: SCORE_GAME, tag: tag, link: linkEl.value.trim(), score: c.lastScore, duration: scoreDuration(c) }).then(r => {
+    if (r && r.ok) {
+      c.submitted = true;
+      saveCompany();
+      msg.textContent = "You're on the board.";
+      loadBoard("foldBoard", tag, c.lastScore);
+    } else msg.textContent = (r && r.error === "unknown_game" ? "The board isn't taking Full Meta Packet scores yet" : "The board didn't take it" + (r && r.error ? " (" + r.error.replace(/_/g, " ") + ")" : "")) + ". Your score is still saved on this phone.";
+  });
+}
+function openBoardSheet() {
+  document.getElementById("buildTitle").textContent = "High scores";
+  document.getElementById("buildBody").innerHTML = `<p class="note">The top studios on the shared board.</p><ul id="sheetBoard" class="runs"></ul><h2 class="section-title spaced">Your best runs on this phone</h2>${renderRuns(null)}`;
+  const sheet = document.getElementById("build");
+  sheet.dataset.resume = "";
+  sheet.hidden = false;
+  loadBoard("sheetBoard");
+}
+
 function showFold(stamp) {
   const c = company;
-  document.getElementById("foldText").textContent = "Lasted until day " + c.day + ", shipped " + c.shipped + " " + plural(c.shipped, "game") +
+  const how = c.endKind === "sell" ? "Sold the studio for " + cash(c.endBonus || 0) + " on day " + c.day : c.endKind === "retire" ? "Retired on day " + c.day + " with " + cash(c.endBonus || 0) + " in cash and a year of royalties" : "Lasted until day " + c.day;
+  document.getElementById("foldTitle").textContent = c.endKind === "sell" ? "You sold the studio" : c.endKind === "retire" ? "You retired" : "The studio folded";
+  document.getElementById("foldText").textContent = how + ". Shipped " + c.shipped + " " + plural(c.shipped, "game") +
     ", earned " + cash(c.earned || 0) + ", and went out with reputation " + Math.round(c.reputation) + ".";
+  let saved = "";
+  try { saved = localStorage.getItem(TAG_KEY) || ""; } catch (error) { /* storage unavailable */ }
+  const tagEl = document.getElementById("foldTag");
+  if (!tagEl.value) tagEl.value = saved;
+  document.getElementById("foldMsg").textContent = c.submitted ? "This run is already on the board." : "";
+  loadBoard("foldBoard");
   document.getElementById("foldScore").textContent = "Score " + (c.lastScore != null ? c.lastScore : runScore(c)).toLocaleString("en-US");
   document.getElementById("foldRuns").outerHTML = `<ul id="foldRuns" class="runs">` +
     renderRuns(stamp || c.lastRun).replace(/^<ul class="runs">|<\/ul>$/g, "").replace(/^<p class="note">.*<\/p>$/, "") + `</ul>`;
@@ -4541,6 +4636,12 @@ function renderOffice() {
   html += `<h2 class="section-title spaced">Record</h2>
     <p class="note">${c.shipped} ${plural(c.shipped, "game")} shipped, ${c.bugsShipped} of them with a bug. Reputation is ${Math.round(c.reputation)} out of 100.</p>
     <p class="note">Lifetime revenue ${cash(c.earned || 0)}. Run score so far ${runScore(c).toLocaleString("en-US")}.</p>
+    <h2 class="section-title spaced">Cash out</h2>
+    <p class="note">Retire and you keep the cash and the whole backlist, so your score gets your cash plus a year of tonight's royalties, ${cash(retireBonus(c))} right now. Sell the studio and a buyer pays your cash plus what the building, the rooms, the staff, and the backlist are worth, more if your reputation is good, ${cash(saleBonus(c))} right now. Either one ends the run and lets you put your score on the high score board.</p>
+    <div class="actions"><button class="btn ${exitArmed.kind === "retire" && Date.now() < exitArmed.until ? "fire armed" : "primary"}" data-do="retire">${exitArmed.kind === "retire" && Date.now() < exitArmed.until ? "Tap again to retire" : "Retire"}</button>
+    <button class="btn ${exitArmed.kind === "sell" && Date.now() < exitArmed.until ? "fire armed" : "primary"}" data-do="sell">${exitArmed.kind === "sell" && Date.now() < exitArmed.until ? "Tap again to sell" : "Sell the studio"}</button></div>
+    <button class="btn wide" data-do="board" style="margin-top:10px">See the high score board</button>
+    <h2 class="section-title spaced">Your best runs on this phone</h2>
     ${renderRuns(null)}
     <button class="btn wide" data-do="reset">${Date.now() < resetArmedUntil ? "Tap again to erase this company" : "Start a new company"}</button>
     <p class="quiet" style="margin-top:12px">${VERSION}</p>`;
@@ -5083,6 +5184,14 @@ function doAction(action, id) {
       }
       break;
     }
+    case "retire":
+    case "sell":
+      if (exitArmed.kind === action && Date.now() < exitArmed.until) { exitArmed = { kind: null, until: 0 }; endRun(action); }
+      else exitArmed = { kind: action, until: Date.now() + 4000 };
+      break;
+    case "board":
+      openBoardSheet();
+      break;
     case "reset":
       if (Date.now() < resetArmedUntil) {
         company = newCompany();
@@ -9072,6 +9181,7 @@ setInterval(() => {
   }
 }, 250);
 
+document.getElementById("foldSubmit").addEventListener("click", submitScore);
 document.getElementById("foldNew").addEventListener("click", () => {
   company = newCompany();
   company.seenHelp = true;
@@ -9081,6 +9191,7 @@ document.getElementById("foldNew").addEventListener("click", () => {
   render();
 });
 if (company.over) showFold(null);
+window.onScoresReady = () => { if (!document.getElementById("fold").hidden) loadBoard("foldBoard"); };
 
 function openHelp() { document.getElementById("help").hidden = false; }
 document.getElementById("infoBtn").addEventListener("click", openHelp);
