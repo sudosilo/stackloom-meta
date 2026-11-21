@@ -197,6 +197,8 @@
   .prem.own { background: #1c2833; }
   .mash-card { border: 2px solid #8f6ee8; }
   .variety-card { border: 2px solid #2463b0; }
+  .focus { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .focus select { flex: 1; font: inherit; font-size: 14px; color: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--edge); background: var(--surface); }
   .variety-num { font-size: 34px; font-weight: 800; color: #2463b0; font-variant-numeric: tabular-nums; margin: 4px 0; }
   .mash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
   .mash-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
@@ -497,6 +499,9 @@
 
     <h2>Perks and house rules</h2>
     <p>The Office tab sells perks that lift everyone's performance every night: cheap soda and snack machines for a stick shop, a coffee bar, a lounge, and daily catering that costs more as the team grows. Hire a manager and you can set house rules: fire anyone who sinks below a line, and give a raise to anyone who stays above a line for enough nights in a row. The lines show up as red and green ticks on every performance meter.</p>
+
+    <h2>In house games</h2>
+    <p>Every dev on the Team tab has a Working on menu. Leave them on customer orders and they supervise agents. Point one at an engine and they build Full Meta Packet Originals on it all day, no terminal and no customer, straight onto whatever store shelves you have deals with. Put every dev on puzzle games, stop taking orders, and live off the royalties if the backlist can carry you.</p>
 
     <h2>Variety, mashups, and stores</h2>
     <p>Royalties never stop: every game you ever ship stays on store shelves earning a little forever, so a few hundred forgotten games pay somebody's wages, and an old flop can turn into a sleeper hit overnight. Every order comes with a real product title, like Turbo Burrito Jam Remastered or Lil Fang Feud Idle. It also comes in a mobile, desktop, or console version, and some get a finish like foil, holographic, rainbow, glow in the dark, glitch, or retro CRT that shows up on screen when you play it. Lite versions are free to play: they pay half up front and milk microtransactions later. Remasters only show up for games you already shipped, and they build fast. Mashups splice two skins on the same engine, pay more, and break more. The mashup machine on the Games tab builds mashups on spec under your own label, and storefront deals on the Office tab put every game you have shipped on the shelf to earn a little every night.</p>
@@ -1843,6 +1848,45 @@ function renderExploits() {
     </div></div>`).join("");
 }
 
+const IN_HOUSE_BASE = 0.45;
+function inHouseSeconds() { return DAY_SECONDS * IN_HOUSE_BASE; }
+function runInHouse(dt) {
+  const c = company;
+  if (!c.devWork) c.devWork = {};
+  if (!c.devShipped) c.devShipped = {};
+  c.devs.forEach(name => {
+    const line = devFocus(name);
+    if (line === "orders") return;
+    if (!openLineKeys().includes(line) || lineFrozen(line)) return;
+    c.devWork[name] = (c.devWork[name] || 0) + dt * perfMult("dev", name);
+    if (c.devWork[name] < inHouseSeconds()) return;
+    c.devWork[name] = 0;
+    const order = makeOffer(line);
+    const keys = Object.keys(themeMapFor(line));
+    order.theme = pick(keys);
+    order.mix = Math.random() < 0.45 && keys.length > 1 ? pick(keys.filter(k => k !== order.theme)) : null;
+    const signed = STORES.filter(st => (c.stores || {})[st.key]).map(st => st.platform);
+    order.platform = signed.length ? pick(signed) : "mobile";
+    order.finish = Math.random() < 0.3 ? pick(Object.keys(FINISHES)) : null;
+    order.prefix = Math.random() < 0.6 ? pick(TITLE_PREFIXES) : null;
+    order.suffix = pick(TITLE_SUFFIXES.filter(x => !x.tag)).word;
+    order.tag = null;
+    order.customer = "Full Meta Packet Originals";
+    order.own = true;
+    order.pay = 0;
+    order.premium = false;
+    order.qa = "Dev " + name;
+    order.builtBy = -1;
+    order.bug = Math.random() < 0.12 ? { pieceIndex: Math.floor(Math.random() * bugSlots(order)) } : null;
+    order.status = "ready";
+    order.deadline = c.time + DAY_SECONDS * 30;
+    c.orders.push(order);
+    shipOrder(order);
+    c.devShipped[name] = (c.devShipped[name] || 0) + 1;
+    dirty = true;
+  });
+}
+
 function finishPatch(order) {
   const c = company;
   const v = (c.cves || []).find(x => x.cve === order.cveId);
@@ -2863,9 +2907,13 @@ function fireNow(role, idx, reason) {
 function findOrder(id) { return company.orders.find(o => o.id === id); }
 function office() { return OFFICES[company.officeLevel]; }
 function isManaged(i) { return i >= 0 && i < company.agents.length * 3; }
-function isBoosted(i) { return i >= 0 && Math.floor(i / 3) < Math.min(company.agents.length, company.devs.length * 3); }
+// Devs either supervise agents on customer orders, or get pulled onto an
+// in house line where they build Full Meta Packet Originals on their own.
+function devFocus(name) { return (company.devFocus || {})[name] || "orders"; }
+function supervisors() { return company.devs.filter(n => devFocus(n) === "orders"); }
+function isBoosted(i) { return i >= 0 && Math.floor(i / 3) < Math.min(company.agents.length, supervisors().length * 3); }
 function agentFor(i) { return company.agents[Math.floor(i / 3)]; }
-function devFor(i) { return company.devs[Math.floor(Math.floor(i / 3) / 3)]; }
+function devFor(i) { return supervisors()[Math.floor(Math.floor(i / 3) / 3)]; }
 
 function terminalSpeed(i) {
   let speed = 1;
@@ -3752,6 +3800,7 @@ function simulate(dt) {
   runQA(dt);
   runAgents();
   runSecurity(dt);
+  runInHouse(dt);
   cleanup();
 }
 
@@ -4086,7 +4135,7 @@ function renderTeam() {
     if (first >= c.terminals.length) runs = "No terminals to run yet. Buy more terminals.";
     else if (last - first === 1) runs = "Runs Terminal " + (first + 1);
     else runs = "Runs Terminals " + (first + 1) + " to " + last;
-    const boss = a < c.devs.length * 3 ? ". Supervised by Dev " + c.devs[Math.floor(a / 3)] : "";
+    const boss = a < supervisors().length * 3 ? ". Supervised by Dev " + supervisors()[Math.floor(a / 3)] : "";
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">Agent ${name}</div><div class="row-state">${cash(salaryFor("agent", name))} a day</div></div>
@@ -4103,17 +4152,31 @@ function renderTeam() {
   </div>`;
 
   html += `<h2 class="section-title spaced" id="sec-dev">Devs</h2>
-    <p class="note">A dev supervises up to three agents. Terminals under those agents build faster and write fewer bugs, and the dev fixes about half the bugs an agent would have shipped.</p>`;
+    <p class="note">A dev on customer orders supervises up to three agents. Terminals under those agents build faster and write fewer bugs, and the dev fixes about half the bugs an agent would have shipped. Or point a dev at one engine and they build Full Meta Packet Originals on that engine all day, no terminal and no customer, straight onto store shelves for royalties. Go all in on one kind of game and live off the backlist if you want.</p>`;
 
   if (!c.devs.length) html += `<p class="empty">No devs yet.</p>`;
 
+  const sups = supervisors();
   c.devs.forEach((name, d) => {
-    const team = c.agents.slice(d * 3, d * 3 + 3).map(agent => "Agent " + agent);
-    const text = team.length ? "Supervises " + team.join(", ") : "No agents to supervise yet. Hire more agents.";
+    const focus = devFocus(name);
+    let text;
+    if (focus === "orders") {
+      const si = sups.indexOf(name);
+      const team = c.agents.slice(si * 3, si * 3 + 3).map(agent => "Agent " + agent);
+      text = team.length ? "Supervises " + team.join(", ") : "No agents to supervise yet. Hire more agents.";
+    } else {
+      const pct = Math.min(99, Math.round(((c.devWork || {})[name] || 0) / inHouseSeconds() * 100));
+      text = "Building an in house " + lineLabel(focus) + " game, " + pct + " percent done. Shipped " + ((c.devShipped || {})[name] || 0) + " so far.";
+    }
+    const lines = openLineKeys();
+    const focusSelect = `<label class="focus">Working on <select data-focus="${name}">
+      <option value="orders" ${focus === "orders" ? "selected" : ""}>Customer orders</option>
+      ${lines.map(l => `<option value="${l}" ${focus === l ? "selected" : ""}>In house ${lineLabel(l)} games</option>`).join("")}</select></label>`;
     html += `
       <div class="row">
         <div class="row-top"><div class="row-name">Dev ${name}</div><div class="row-state">${cash(salaryFor("dev", name))} a day</div></div>
         ${perfHtml("dev", name, d)}
+        ${focusSelect}
         <div class="row-sub">${text}</div>
       </div>`;
   });
@@ -4716,6 +4779,12 @@ view.addEventListener("input", event => {
 view.addEventListener("change", event => {
   const sel = event.target.closest("[data-mash]");
   if (sel) company[sel.dataset.mash] = sel.value;
+  const foc = event.target.closest("[data-focus]");
+  if (foc) {
+    if (!company.devFocus) company.devFocus = {};
+    company.devFocus[foc.dataset.focus] = foc.value;
+    notify(foc.value === "orders" ? "Dev " + foc.dataset.focus + " is back on customer orders." : "Dev " + foc.dataset.focus + " is now building in house " + lineLabel(foc.value) + " games full time.", true);
+  }
   dirty = true;
 });
 

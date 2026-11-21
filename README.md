@@ -8,6 +8,6 @@ Live at stackloom-meta.vercel.app.
 
 This app is checked every morning by Control Troll.
 
-Latest change. 2026-11-20, v2026.11.20.17. Added a variety counter of distinct products shipped.
+Latest change. 2026-11-20, v2026.11.20.18. Devs can be pointed at one engine to build in house games full time.
 
 Full history is in CHANGELOG.md.
